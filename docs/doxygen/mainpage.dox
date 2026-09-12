@@ -1,0 +1,21 @@
+/**
+@mainpage TP1 - Optimización
+
+Esta documentación se genera a partir de una exportación temporal del notebook
+canónico. El archivo exportado bajo `build/doxygen-source/` es un producto de
+compilación: no debe editarse ni versionarse.
+
+@section source Fuente canónica
+
+La implementación, las pruebas y los experimentos se mantienen en
+`notebooks/tp1_optimizacion.ipynb`.
+
+@section generation Generación
+
+Desde la raíz del repositorio:
+
+@code{.sh}
+jupyter nbconvert --to python notebooks/tp1_optimizacion.ipynb --output tp1_optimizacion --output-dir build/doxygen-source
+doxygen Doxyfile
+@endcode
+*/

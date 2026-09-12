@@ -1,0 +1,80 @@
+# Operating systems
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editors and IDEs
+/.idea/
+/.vscode/
+/.settings/
+/.project
+/.pydevproject
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Python environments
+.venv/
+venv/
+env/
+ENV/
+.conda/
+__pypackages__/
+
+# Jupyter and IPython
+.ipynb_checkpoints/
+.ipython/
+.jupyter/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Experiment services and local state
+wandb/
+.wandb/
+mlruns/
+optuna*.db
+*.sqlite
+*.sqlite3
+
+# Large or transient experiment artifacts
+results/raw/
+*.pt
+*.pth
+*.ckpt
+
+# Generated documentation and LaTeX products
+/build/
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+_minted-*/

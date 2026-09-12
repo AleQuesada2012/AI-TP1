@@ -1,0 +1,24 @@
+PROJECT_NAME           = "TP1 - Optimizacion"
+PROJECT_BRIEF          = "Documentacion interna del notebook autocontenido"
+OUTPUT_DIRECTORY       = build/doxygen
+
+INPUT                  = docs/doxygen/mainpage.dox \
+                         build/doxygen-source
+FILE_PATTERNS          = *.py *.dox
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */.ipynb_checkpoints/*
+
+MARKDOWN_SUPPORT       = YES
+JAVADOC_AUTOBRIEF      = YES
+PYTHON_DOCSTRING       = YES
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+SOURCE_BROWSER         = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+QUIET                  = NO

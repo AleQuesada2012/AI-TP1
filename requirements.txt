@@ -1,0 +1,12 @@
+# Core notebook environment. Pin versions after validating them across the
+# operating systems used by the team.
+jupyterlab
+matplotlib
+nbconvert
+numpy
+pandas
+torch
+
+# Hyperparameter calibration
+optuna
+# wandb
