@@ -133,6 +133,19 @@ def plot_critical_points(
     axis.legend()
     plt.show()
 
+def plot_func_hist(x_grid, y_grid, func, X_visited):
+    Z = func(x_grid, y_grid)
+    X1, X2 = torch.meshgrid(x_grid, y_grid)
+
+    ctrs = plt.contour(X1, X2, Z, levels=50, cmap="viridis")
+    plt.clabel(ctrs, inline=True, fontsize=10)
+    x_min = torch.tensor([[0, 0]])
+
+    plt.scatter(x_min[:, 0], x_min[:, 0], color="red")
+    plt.scatter(X_visited[:, 0], X_visited[:, 1], color="blue")
+    plt.show()
+
+
 
 
 
