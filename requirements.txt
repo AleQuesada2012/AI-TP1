@@ -6,7 +6,7 @@ nbconvert
 numpy
 pandas
 torch
-
+ipywidgets
 # Hyperparameter calibration
 optuna
 # wandb

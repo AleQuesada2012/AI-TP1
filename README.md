@@ -80,6 +80,6 @@ Los productos intermedios permanecen en `build/`. El PDF revisado se copia a
 
 ## Equipo
 
-- Estudiante 1
-- Estudiante 2
-- Estudiante 3
+- Alejandro Quesada
+- Manfred Azofeifa
+- Jose Adrián Herrera
