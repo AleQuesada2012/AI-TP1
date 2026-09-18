@@ -1,3 +1,76 @@
 \section{Descenso del gradiente}
 
-% TODO: Explicar el método, su calibración, pruebas y resultados.
+\subsection{Formulación}
+
+El descenso del gradiente actualiza el punto actual en la dirección
+opuesta al gradiente:
+\[
+x_{t+1} = x_t - \alpha \nabla f(x_t).
+\]
+El gradiente se calcula con \texttt{torch.autograd.grad}; la actualización
+se realiza fuera del grafo de autodiferenciación (\texttt{torch.no\_grad})
+para evitar acumular historial innecesario.
+
+\subsection{Aplicación a cada función}
+\label{sec:gd_aplicacion}
+
+Partiendo de un punto aleatorio en $[-10,10]^2$ y ejecutando $P=25$
+iteraciones, se usó una tasa de aprendizaje distinta por función, ajustada
+manualmente para evitar divergencia:
+
+\begin{itemize}
+    \item $f_0$: $\alpha=0.1$.
+    \item $f_1$ (Ackley): $\alpha=0.01$.
+    \item $f_2$ (Himmelblau): $\alpha=0.002$. Esta función crece como un
+    polinomio de grado cuatro, por lo que su gradiente crece rápidamente
+    lejos de los mínimos: por ejemplo, en $(10,10)$ el gradiente es
+    aproximadamente $(4166, 4318)$. Con una tasa mayor, un solo paso puede
+    salir del dominio hacia una zona con un gradiente aún mayor y la
+    sucesión diverge.
+\end{itemize}
+
+% TODO: Insertar aquí la curva de aprendizaje y la trayectoria
+% (plot_func_hist) de la corrida usada como ejemplo para cada función.
+
+\subsection{Calibración de hiperparámetros con Optuna}
+\label{sec:gd_optuna}
+
+Se calibraron $\alpha$ y la cantidad de iteraciones con Optuna
+(muestreador TPE, semilla fija), evaluando cada ensayo como el promedio de
+$f(x_{\text{final}})$ sobre 6 puntos iniciales fijos compartidos entre
+ensayos. Un ensayo se penaliza (score $=10^6$) si el algoritmo diverge o si
+la norma del gradiente final supera $10^{-3}$. Con 25 ensayos por función,
+los mejores resultados encontrados fueron:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Función & Mejor $\alpha$ & Mejores iteraciones & Promedio $f(x_{\text{final}})$ \\
+\midrule
+$f_0$ & $0.456334$   & $80$  & $2.81\times10^{-168}$ \\
+$f_1$ & $0.00763728$ & $225$ & $13.30575$ \\
+$f_2$ & $0.00552217$ & $510$ & $1.459\times10^{-29}$ \\
+\bottomrule
+\end{tabular}
+\caption{Mejores hiperparámetros de descenso del gradiente encontrados por
+Optuna, en 25 ensayos por función.}
+\end{table}
+
+Nótese que Optuna pudo explorar cantidades de iteraciones mayores a
+$P=25$ (hasta 80, 225 y 510 según la función), por lo que estos valores no
+son directamente comparables con las corridas de 25 iteraciones de la
+sección anterior. En Ackley el promedio permanece lejos de cero porque los
+puntos iniciales fijos caen en cuencas de atracción de distintos mínimos
+locales.
+
+% TODO: Repetir el protocolo de 10 corridas por función con los mejores
+% hiperparámetros (máximo 50 iteraciones), documentando en una tabla si
+% cada corrida converge y en cuántas iteraciones lo hace.
+% TODO: Reportar el valor promedio de la función minimizada y la cantidad
+% promedio de iteraciones para converger, sobre esas 10 corridas.
+% TODO: Graficar la trayectoria (curvas de nivel) y la curva de
+% aprendizaje de la corrida con convergencia más rápida, para cada
+% función.
+% TODO: Comparar formalmente contra RMSProp una vez esa calibración esté
+% lista (ver Sección~\ref{sec:comparacion}).

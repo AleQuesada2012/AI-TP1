@@ -1,3 +1,31 @@
 \section{Pruebas unitarias}
+\label{sec:pruebas}
 
-% TODO: Documentar al menos dos pruebas unitarias por método.
+El enunciado exige documentar al menos dos pruebas unitarias por método.
+Por el momento solo RMSProp cuenta con pruebas implementadas, en la
+sección "Pruebas unitarias" de
+\texttt{notebooks/tp1\_optimizacion.ipynb}.
+
+\subsection{RMSProp}
+
+\begin{description}
+    \item[\texttt{probar\_actualizacion\_rmsprop}] Ejecuta un único paso
+    de RMSProp desde el punto $(1,-2)$ sobre $f_0$, con $\alpha=0.1$,
+    $\gamma=0.9$ y $\epsilon=10^{-6}$, y compara el punto y el valor de
+    función resultantes contra los calculados explícitamente con la
+    ecuación de actualización, usando \texttt{torch.testing.assert\_close}.
+    Verifica que la implementación vectorizada coincide con la fórmula
+    matemática.
+    \item[\texttt{probar\_historiales\_rmsprop}] Ejecuta 25 iteraciones de
+    RMSProp sobre $f_0$, $f_1$ y $f_2$ desde puntos y tasas de aprendizaje
+    fijos, y comprueba para cada caso que: el historial de puntos tiene
+    forma $(26,2)$ y el de valores $(26,)$ (incluyendo el estado inicial y
+    los 25 pasos); todos los valores son finitos; el primer punto coincide
+    con el punto inicial; y el valor final es estrictamente menor que el
+    inicial.
+\end{description}
+
+% TODO: Agregar al menos dos pruebas unitarias documentadas para descenso
+% del gradiente.
+% TODO: Agregar al menos dos pruebas unitarias documentadas para enjambre
+% de partículas, una vez implementado (Sección~\ref{sec:pso}).

@@ -1,3 +1,62 @@
-\section{RMSprop}
+\section{RMSProp}
 
-% TODO: Explicar el método, su calibración, pruebas y resultados.
+\subsection{Formulación}
+
+RMSProp mantiene un promedio móvil, por coordenada, de los gradientes al
+cuadrado, y lo usa para escalar el tamaño de paso de cada componente:
+\[
+s_t = \gamma s_{t-1} + (1-\gamma)g_t^2, \qquad
+x_{t+1} = x_t - \frac{\alpha}{\sqrt{s_t+\epsilon}}\odot g_t,
+\]
+con $s_0=0$. La implementación sigue la formulación de
+\cite{d2l_rmsprop}.
+
+\subsection{Aplicación a cada función}
+
+Se usó $\gamma=0.9$ y $\epsilon=10^{-6}$ en las tres funciones, con
+$P=25$ iteraciones, reutilizando el mismo punto inicial que la corrida de
+descenso del gradiente correspondiente (Sección~\ref{sec:gd_aplicacion})
+para que la comparación parta de la misma solución. La tasa de
+aprendizaje se fijó manualmente por función:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Función & $\alpha$ & $f(x_0)$ & $f(x_{25})$ \\
+\midrule
+$f_0$ & $0.5$  & $107.135818$ & $0.020914$ \\
+$f_1$ & $0.05$ & $16.620710$  & $16.389915$ \\
+$f_2$ & $0.4$  & $1189.057129$ & $0.000001$ \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de una corrida de RMSProp por función, usando los
+mismos puntos iniciales que descenso del gradiente.}
+\end{table}
+
+En $f_1$ el valor final permanece lejos de cero: el punto inicial
+aleatorio condujo a la cuenca de un mínimo local de Ackley distinto del
+origen, no a una falla del algoritmo.
+
+% TODO: Insertar aquí la curva de aprendizaje y la trayectoria
+% (plot_func_hist) de cada corrida.
+
+\subsection{Calibración de hiperparámetros}
+
+% TODO: Calibrar alpha (y opcionalmente gamma/epsilon) de RMSProp con
+% Optuna, igual que se hizo para descenso del gradiente
+% (Sección~\ref{sec:gd_optuna}), y reportar los mejores valores
+% encontrados junto con las gráficas del proceso de calibrado.
+
+\subsection{Pruebas unitarias}
+
+Ver la Sección~\ref{sec:pruebas} para la documentación de las dos pruebas
+unitarias ya implementadas para RMSProp.
+
+% TODO: Documentar en esta sección el protocolo de 10 corridas (máximo 50
+% iteraciones), el valor promedio de la función minimizada y la cantidad
+% promedio de iteraciones para converger.
+% TODO: Graficar la trayectoria y la curva de aprendizaje de la corrida
+% con convergencia más rápida, para cada función.
+% TODO: Responder por qué RMSProp evita mejor los puntos silla que el
+% descenso del gradiente (ver Sección~\ref{sec:comparacion}).

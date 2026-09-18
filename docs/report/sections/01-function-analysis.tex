@@ -1,3 +1,185 @@
 \section{Análisis de las funciones}
 
-% TODO: Documentar el análisis solicitado y referenciar sus figuras.
+\subsection{Definición y visualización}
+
+Las tres funciones se evaluaron sobre una malla regular de $401\times401$
+puntos en $[-10,10]^2$, construida con \texttt{torch.meshgrid}. Para cada
+una se generaron curvas de nivel (\texttt{contourf}) y una superficie 3D
+mediante la función auxiliar \texttt{plot\_function\_2d\_3d} del notebook.
+
+\begin{align}
+f_0(x,y) &= x^2+y^2, \\
+f_1(x,y) &= -20\exp\!\left[-0.2\sqrt{0.5(x^2+y^2)}\right]
+  - \exp\!\left[0.5(\cos 2\pi x+\cos2\pi y)\right] + e + 20, \\
+f_2(x,y) &= (x^2+y-11)^2+(x+y^2-7)^2.
+\end{align}
+
+% TODO: Insertar aquí las figuras exportadas a results/figures/ (curvas de
+% nivel y superficie 3D) para f0, f1 y f2.
+
+\subsection{Convexidad}
+
+$f_0$ es una función cuadrática con Hessiana constante $2I$, positiva
+definida en todo el dominio, por lo que es convexa. $f_1$ (Ackley) y $f_2$
+(Himmelblau) no son convexas: ambas presentan múltiples mínimos locales y
+puntos silla, según se muestra a continuación.
+
+\subsection{Derivación analítica de los gradientes}
+\label{sec:gradientes_analiticos}
+
+La búsqueda de puntos críticos se apoya en \texttt{torch.autograd}, que
+calcula el gradiente de forma automática. Como verificación independiente
+de esos valores, a continuación se deriva cada gradiente de forma cerrada
+mediante la regla de la cadena.
+
+\subsubsection{$f_0(x,y)=x^2+y^2$}
+Al ser una suma de potencias, sus derivadas parciales son inmediatas:
+\[
+\frac{\partial f_0}{\partial x} = 2x, \qquad \frac{\partial f_0}{\partial y} = 2y.
+\]
+
+\subsubsection{$f_1(x,y)$ (Ackley)}
+
+Conviene separar $f_1$ en dos términos que dependen de $(x,y)$ y una
+constante:
+\[
+f_1 = \underbrace{-20\exp\!\left[-0.2\sqrt{0.5(x^2+y^2)}\right]}_{A(x,y)}
+\;\underbrace{-\exp\!\left[0.5(\cos 2\pi x+\cos2\pi y)\right]}_{B(x,y)}
+\;+\;\underbrace{e+20}_{\text{constante}}.
+\]
+La constante no depende de $x,y$, por lo que su derivada es $0$.
+
+\paragraph{Término $A$.} Sea $u(x,y)=0.5(x^2+y^2)$, de modo que
+$A=-20\exp[-0.2\sqrt{u}]$. Aplicando la regla de la cadena de adentro
+hacia afuera respecto a $x$:
+\[
+\frac{\partial u}{\partial x} = x,
+\qquad
+\frac{\partial \sqrt{u}}{\partial x} = \frac{1}{2\sqrt{u}}\cdot\frac{\partial u}{\partial x} = \frac{x}{2\sqrt{u}},
+\]
+\[
+\frac{\partial}{\partial x}\big(-0.2\sqrt{u}\big) = \frac{-0.1\,x}{\sqrt{u}},
+\qquad
+\frac{\partial}{\partial x}\exp\!\left[-0.2\sqrt{u}\right] = \exp\!\left[-0.2\sqrt{u}\right]\cdot\frac{-0.1\,x}{\sqrt{u}}.
+\]
+Multiplicando por el $-20$ que multiplica a todo el término, los dos
+signos negativos se cancelan:
+\[
+\frac{\partial A}{\partial x} = -20\cdot\frac{-0.1\,x}{\sqrt{u}}\exp\!\left[-0.2\sqrt{u}\right]
+= \frac{2x}{\sqrt{u}}\exp\!\left[-0.2\sqrt{u}\right].
+\]
+Por la simetría entre $x$ y $y$ dentro de $u$, el mismo procedimiento da
+\[
+\frac{\partial A}{\partial y} = \frac{2y}{\sqrt{u}}\exp\!\left[-0.2\sqrt{u}\right].
+\]
+
+\paragraph{Término $B$.} Sea $v(x,y)=0.5(\cos 2\pi x+\cos 2\pi y)$, de
+modo que $B=-\exp[v]$. Usando $\frac{d}{dx}\cos(2\pi x)=-2\pi\sin(2\pi
+x)$ y que $\cos(2\pi y)$ no depende de $x$:
+\[
+\frac{\partial v}{\partial x} = 0.5\cdot(-2\pi\sin 2\pi x) = -\pi\sin(2\pi x),
+\qquad
+\frac{\partial}{\partial x}\exp[v] = \exp[v]\cdot(-\pi\sin 2\pi x).
+\]
+Multiplicando por el $-1$ que multiplica a todo el término, los signos
+vuelven a cancelarse:
+\[
+\frac{\partial B}{\partial x} = \pi\sin(2\pi x)\exp[v].
+\]
+De forma análoga,
+\[
+\frac{\partial B}{\partial y} = \pi\sin(2\pi y)\exp[v].
+\]
+
+\paragraph{Gradiente completo.} Sumando $A$ y $B$, y recordando que la
+constante $e+20$ no aporta:
+\begin{align}
+\frac{\partial f_1}{\partial x} &= \frac{2x}{\sqrt{0.5(x^2+y^2)}}\exp\!\left[-0.2\sqrt{0.5(x^2+y^2)}\right]
+  + \pi\sin(2\pi x)\exp\!\left[0.5(\cos 2\pi x+\cos2\pi y)\right], \\
+\frac{\partial f_1}{\partial y} &= \frac{2y}{\sqrt{0.5(x^2+y^2)}}\exp\!\left[-0.2\sqrt{0.5(x^2+y^2)}\right]
+  + \pi\sin(2\pi y)\exp\!\left[0.5(\cos 2\pi x+\cos2\pi y)\right].
+\end{align}
+Estas expresiones no están definidas en $(0,0)$ (división entre
+$\sqrt{u}=0$), lo cual coincide con la falta de suavidad del mínimo
+global de Ackley señalada más adelante. Se verificó de forma
+independiente con WolframAlpha que ambas derivadas coinciden con esta
+forma cerrada.
+
+\subsubsection{$f_2(x,y)$ (Himmelblau)}
+
+$f_2$ es la suma de dos términos al cuadrado; cada uno se deriva con la
+regla de la cadena $\frac{d}{dx}[(\cdot)^2]=2(\cdot)\cdot(\cdot)'$.
+
+Respecto a $x$:
+\[
+\frac{\partial}{\partial x}\big[(x^2+y-11)^2\big] = 2(x^2+y-11)\cdot 2x = 4x(x^2+y-11),
+\]
+\[
+\frac{\partial}{\partial x}\big[(x+y^2-7)^2\big] = 2(x+y^2-7)\cdot 1 = 2(x+y^2-7),
+\]
+\[
+\frac{\partial f_2}{\partial x} = 4x(x^2+y-11) + 2(x+y^2-7).
+\]
+
+Respecto a $y$:
+\[
+\frac{\partial}{\partial y}\big[(x^2+y-11)^2\big] = 2(x^2+y-11)\cdot 1 = 2(x^2+y-11),
+\]
+\[
+\frac{\partial}{\partial y}\big[(x+y^2-7)^2\big] = 2(x+y^2-7)\cdot 2y = 4y(x+y^2-7),
+\]
+\[
+\frac{\partial f_2}{\partial y} = 2(x^2+y-11) + 4y(x+y^2-7).
+\]
+Se verificó de forma independiente con WolframAlpha que ambas derivadas
+coinciden con esta forma cerrada.
+
+\subsection{Búsqueda de puntos críticos con PyTorch}
+
+Los mínimos observados sobre la malla discreta (\texttt{torch.argmin}) son
+solo aproximaciones limitadas por su resolución: para $f_0$ y $f_1$ el
+mínimo muestreado se ubicó en $(0,0)$, con valores del orden de
+$10^{-13}$--$10^{-14}$, y para $f_2$ en $(3,2)$, con un valor del orden de
+$10^{-13}$.
+
+Para refinar esas aproximaciones se calculó el gradiente y la Hessiana
+$2\times2$ con \texttt{torch.autograd.grad} y se aplicó el método de
+Newton
+\[
+H(p)\,\Delta p = \nabla f(p), \qquad p_{\text{nuevo}} = p-\Delta p,
+\]
+partiendo de puntos iniciales tomados de las curvas de nivel. Cada punto
+estacionario se clasificó según el signo del determinante $D$ de la
+Hessiana: $D<0$ indica un punto silla; $D>0$ con $f_{xx}>0$ indica un
+mínimo local; $D>0$ con $f_{xx}<0$ indica un máximo local.
+
+\subsubsection{$f_0$}
+$f_0$ tiene un único mínimo global en $(0,0)$, con valor $0$ y
+determinante de la Hessiana igual a $4$. Al ser una suma de cuadrados, no
+existen otros puntos críticos.
+
+\subsubsection{$f_1$ (Ackley)}
+El mínimo global se ubica en $(0,0)$ con valor $0$; ese punto no es
+diferenciable en el sentido clásico por el término con raíz cuadrada, por
+lo que no se le aplicó la prueba de la Hessiana. Alrededor del origen se
+identificaron, mediante Newton, 8 mínimos locales representativos: 4 sobre
+los ejes, con valor $\approx 2.5799$ y determinante $\approx 2613.71$; y 4
+en las diagonales, con valor $\approx 3.5745$ y determinante $\approx
+2623.10$. También se identificaron 4 puntos silla representativos, todos
+con valor $\approx 3.2525$ y determinante $\approx -601.48$.
+
+Además, recorriendo cada punto entero no nulo de $[-10,10]^2$ como inicio
+de Newton, se identificaron dentro del dominio $440$ mínimos locales
+suaves distintos del origen (verificado con un \texttt{assert} en el
+notebook). Este conteo es un resultado numérico, no una prueba analítica de
+exhaustividad.
+
+\subsubsection{$f_2$ (Himmelblau)}
+Se encontraron 4 mínimos globales, todos con valor $0$: $(3, 2)$,
+$(-2.805118,\ 3.131313)$, $(-3.779310,\ -3.283186)$ y $(3.584428,\
+-1.848127)$. También se identificaron 4 puntos silla, con valores
+$13.311926$, $67.719150$, $104.015163$ y $178.337239$ respectivamente.
+
+% TODO: Insertar las figuras de plot_critical_points (mínimos y puntos
+% silla marcados sobre las curvas de nivel) exportadas a
+% results/figures/.

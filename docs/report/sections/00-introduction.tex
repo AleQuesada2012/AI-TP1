@@ -1,3 +1,32 @@
 \section{Introducción}
 
-% TODO: Presentar el objetivo y alcance del trabajo.
+Este informe documenta el Trabajo práctico 1 del curso de Principios de
+Inteligencia Artificial, cuyo enunciado se encuentra en
+\texttt{docs/assignment/TP\_1\_Optimizacion-1.pdf}. El trabajo consiste en
+implementar en PyTorch distintos algoritmos de optimización y compararlos
+sobre tres funciones de prueba:
+
+\begin{align*}
+f_0(x,y) &= x^2+y^2, \\
+f_1(x,y) &= \text{función de Ackley}, \\
+f_2(x,y) &= \text{función de Himmelblau},
+\end{align*}
+
+definidas sobre el dominio $x,y\in[-10,10]$. Salvo que se indique lo
+contrario, cada algoritmo se ejecuta por $P=25$ iteraciones a partir de
+puntos iniciales muestreados uniformemente dentro de ese dominio.
+
+Para cada método (descenso del gradiente, RMSProp y enjambre de partículas)
+el enunciado exige documentar su formulación, el proceso de calibración de
+hiperparámetros y al menos dos pruebas unitarias. Este documento sigue esa
+estructura, sección por sección.
+
+La implementación completa vive en el notebook autocontenido
+\texttt{notebooks/tp1\_optimizacion.ipynb}; este informe resume y explica
+esa implementación sin duplicar el código fuente.
+
+% TODO: Resumir aquí el criterio de convergencia único usado en las tablas
+% comparativas (norma del gradiente vs. distancia al mínimo conocido) una
+% vez quede definido en la sección "Objetivo y protocolo" del notebook.
+% TODO: Mencionar explícitamente el estado de cada algoritmo (completo,
+% parcial, pendiente) cuando el trabajo esté más avanzado.
