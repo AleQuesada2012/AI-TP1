@@ -444,8 +444,7 @@ def gradiente_y_hessiana(funcion, punto):
     valor = funcion(punto)
     gradiente = torch.autograd.grad(valor, punto, create_graph=True)[0]
     filas_hessiana = [
-        torch.autograd.grad(componente, punto, retain_graph=True)[0]
-        for componente in gradiente
+        torch.autograd.grad(componente, punto, retain_graph=True)[0] for componente in gradiente
     ]
     return valor, gradiente, torch.stack(filas_hessiana)
 
@@ -528,14 +527,9 @@ def resultados_a_tabla(resultados):
         "norma_gradiente",
         "det_hessiana",
     ]
-    filas = [
-        {columna: resultado[columna] for columna in columnas}
-        for resultado in resultados
-    ]
+    filas = [{columna: resultado[columna] for columna in columnas} for resultado in resultados]
     tabla = pd.DataFrame(filas)
-    tabla["norma_gradiente"] = tabla["norma_gradiente"].map(
-        lambda value: f"{value:.2e}"
-    )
+    tabla["norma_gradiente"] = tabla["norma_gradiente"].map(lambda value: f"{value:.2e}")
     return tabla.round(
         {
             "x": 6,
@@ -573,15 +567,10 @@ def encontrar_minimos_ackley_en_dominio(
                 (punto >= limite_inferior) & (punto <= limite_superior)
             ).item()
             repetido = any(
-                torch.linalg.vector_norm(punto - anterior).item() < 1e-5
-                for anterior in minimos
+                torch.linalg.vector_norm(punto - anterior).item() < 1e-5 for anterior in minimos
             )
 
-            if (
-                resultado["tipo"] == "mínimo local"
-                and dentro_del_dominio
-                and not repetido
-            ):
+            if resultado["tipo"] == "mínimo local" and dentro_del_dominio and not repetido:
                 minimos.append(punto)
 
     return minimos
@@ -682,6 +671,11 @@ def crear_objetivo_optuna(
     valor_minimo = configuracion["valor_minimo"]
 
     def objetivo(trial):
+        """!
+        @brief Evalúa un ensayo con el presupuesto fijo del estudio.
+        @param trial Ensayo de Optuna que contiene los hiperparámetros sugeridos.
+        @return Promedio del valor final de la función en los puntos iniciales.
+        """
         if algoritmo == "GD":
             alpha = trial.suggest_float(
                 "alpha",
@@ -754,19 +748,11 @@ def crear_objetivo_optuna(
         trial.set_user_attr("corridas_divergentes", 0)
         trial.set_user_attr(
             "iteraciones_promedio_convergencia",
-            (
-                float(np.mean([r["iteraciones"] for r in convergentes]))
-                if convergentes
-                else None
-            ),
+            (float(np.mean([r["iteraciones"] for r in convergentes])) if convergentes else None),
         )
         trial.set_user_attr(
             "promedio_valor_reportado",
-            (
-                float(np.mean(valores_reportados))
-                if valores_reportados
-                else None
-            ),
+            (float(np.mean(valores_reportados)) if valores_reportados else None),
         )
         trial.set_user_attr("promedio_valor_final", promedio_final)
         return promedio_final
@@ -802,9 +788,7 @@ def _configurar_eje_logaritmico(axis, distribucion):
         10 ** (log_superior + margen),
     )
     axis.xaxis.set_major_locator(FixedLocator(marcas))
-    axis.xaxis.set_major_formatter(
-        FuncFormatter(lambda value, _: f"{value:.4g}")
-    )
+    axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.4g}"))
     axis.xaxis.set_minor_locator(NullLocator())
     axis.tick_params(axis="x", labelrotation=30)
 
@@ -831,10 +815,7 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
         raise ValueError("El estudio no contiene ensayos completos para graficar.")
 
     valores = [trial.value for trial in ensayos]
-    usar_escala_log = (
-        all(valor > 0 for valor in valores)
-        and max(valores) / min(valores) > 100
-    )
+    usar_escala_log = all(valor > 0 for valor in valores) and max(valores) / min(valores) > 100
 
     with warnings.catch_warnings():
         warnings.simplefilter(
@@ -846,9 +827,7 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
             target_name="Promedio de f al final",
         )
 
-    axis.set_title(
-        f"Historial de optimización: {algoritmo} sobre {nombre_funcion}"
-    )
+    axis.set_title(f"Historial de optimización: {algoritmo} sobre {nombre_funcion}")
     axis.figure.set_size_inches(8, 4.5)
     if usar_escala_log:
         axis.set_yscale("log")
@@ -894,9 +873,7 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
 
     axes[0].set_ylabel("Promedio de f al final")
     axes[0].legend()
-    figure.suptitle(
-        f"Efecto de hiperparámetros: {algoritmo} sobre {nombre_funcion}"
-    )
+    figure.suptitle(f"Efecto de hiperparámetros: {algoritmo} sobre {nombre_funcion}")
     figure.tight_layout(rect=(0, 0, 1, 0.94))
     plt.show()
 
@@ -930,15 +907,10 @@ def graficar_mejor_corrida(
 
     if seleccion["estado"] == "Convergió":
         indice_final = int(seleccion["índice de reporte"])
-        descripcion = (
-            f"convergió en {int(seleccion['iteraciones hasta converger'])} "
-            "iteraciones"
-        )
+        descripcion = f"convergió en {int(seleccion['iteraciones hasta converger'])} " "iteraciones"
     else:
         indice_final = len(puntos_historial) - 1
-        descripcion = (
-            "no hubo convergencia; se muestra el menor valor final disponible"
-        )
+        descripcion = "no hubo convergencia; se muestra el menor valor final disponible"
 
     puntos_mostrados = puntos_historial[: indice_final + 1]
     valores_mostrados = valores_historial[: indice_final + 1]
@@ -951,15 +923,11 @@ def graficar_mejor_corrida(
         y_grid,
         datos_funcion["funcion"],
         puntos_mostrados,
-        title=(
-            f"Mejor trayectoria de {algoritmo} sobre {nombre_funcion}"
-        ),
+        title=(f"Mejor trayectoria de {algoritmo} sobre {nombre_funcion}"),
         minima=datos_funcion["minimos"],
         local_minima=datos_funcion["minimos_locales"],
     )
     plot_learning_curve(
         valores_mostrados,
-        title=(
-            f"Curva de aprendizaje de {algoritmo} sobre {nombre_funcion}"
-        ),
+        title=(f"Curva de aprendizaje de {algoritmo} sobre {nombre_funcion}"),
     )
