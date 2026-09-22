@@ -320,6 +320,109 @@ def plot_func_hist(
     return figure, axis
 
 
+def plot_historial_pso(func, enjambre_hist, title):
+    """!
+    @brief Grafica el valor de la función en cada partícula de PSO por iteración.
+    @param func Función que recibe un tensor con las coordenadas x e y.
+    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param title Título de la gráfica.
+    @return La figura y sus ejes para permitir ajustes posteriores.
+    """
+    enjambre = torch.as_tensor(enjambre_hist).detach().cpu()
+    if enjambre.ndim != 3 or enjambre.shape[2] != 2:
+        raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2).")
+
+    with torch.no_grad():
+        valores = func(enjambre.permute(2, 0, 1))
+    if not torch.isfinite(valores).all():
+        raise ValueError("El historial contiene NaN o infinito; PSO pudo divergir.")
+
+    valores = valores.numpy()
+    n_iteraciones, n_particulas = valores.shape
+    iteraciones = np.arange(n_iteraciones)
+
+    # El mejor global es el menor valor visitado por cualquier partícula hasta t.
+    mejor_global = np.minimum.accumulate(valores.min(axis=1))
+
+    # Con más de ocho partículas los colores se repiten y la forma las distingue.
+    colores = [
+        "#2a78d6",
+        "#eb6834",
+        "#1baf7a",
+        "#eda100",
+        "#e87ba4",
+        "#008300",
+        "#4a3aa7",
+        "#e34948",
+    ]
+    marcadores = ["o", "s", "^", "D", "v"]
+
+    figure, axis = plt.subplots(figsize=(11, 5.5), layout="constrained")
+    handles_particulas = []
+    for indice_particula in range(n_particulas):
+        color = colores[indice_particula % len(colores)]
+        marcador = marcadores[(indice_particula // len(colores)) % len(marcadores)]
+        axis.plot(
+            iteraciones,
+            valores[:, indice_particula],
+            color=color,
+            alpha=0.25,
+            linewidth=0.7,
+            zorder=2,
+        )
+        axis.scatter(
+            iteraciones,
+            valores[:, indice_particula],
+            color=color,
+            marker=marcador,
+            s=30,
+            edgecolor="white",
+            linewidth=0.5,
+            zorder=3,
+        )
+        handles_particulas.append(
+            plt.Line2D(
+                [0],
+                [0],
+                marker=marcador,
+                color=color,
+                linewidth=0.8,
+                markersize=6,
+                label=f"Partícula {indice_particula}",
+            )
+        )
+
+    linea_mejor = axis.plot(
+        iteraciones,
+        mejor_global,
+        color="black",
+        linewidth=2,
+        drawstyle="steps-post",
+        label="Mejor global",
+        zorder=4,
+    )[0]
+
+    # Igual que en Optuna, la escala logarítmica se usa si los valores abarcan varios órdenes.
+    if (valores > 0).all() and valores.max() / valores.min() > 100:
+        axis.set_yscale("log")
+
+    axis.set_title(title)
+    axis.set_xlabel("Iteración t")
+    axis.set_ylabel("Valor de f en cada partícula")
+    axis.set_xlim(-0.5, n_iteraciones - 0.5)
+    axis.grid(alpha=0.3)
+
+    figure.legend(
+        handles=[linea_mejor, *handles_particulas],
+        loc="outside right upper",
+        ncol=2 if n_particulas > 10 else 1,
+        fontsize=8,
+        frameon=False,
+    )
+    plt.show()
+    return figure, axis
+
+
 def mostrar_tabla(tabla, titulo, formatos=None, na_rep="—"):
     """!
     @brief Muestra un DataFrame con un título visible y formato consistente.
