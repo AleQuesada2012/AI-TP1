@@ -320,105 +320,89 @@ def plot_func_hist(
     return figure, axis
 
 
-def plot_historial_pso(func, enjambre_hist, title):
+def plot_historial_pso(
+    func,
+    enjambre_hist,
+    title,
+    minima,
+    tolerancia=1e-3,
+    hiperparametros=None,
+):
     """!
-    @brief Grafica el valor de la función en cada partícula de PSO por iteración.
+    @brief Grafica la evolución de f en cada partícula de PSO respecto a la convergencia.
     @param func Función que recibe un tensor con las coordenadas x e y.
     @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
     @param title Título de la gráfica.
+    @param minima Uno o varios mínimos globales calculados para la función.
+    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
     @return La figura y sus ejes para permitir ajustes posteriores.
     """
     enjambre = torch.as_tensor(enjambre_hist).detach().cpu()
     if enjambre.ndim != 3 or enjambre.shape[2] != 2:
         raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2).")
+    minima_tensor = _points_as_tensor(minima)
+    if minima_tensor is None:
+        raise ValueError("Se necesita al menos un mínimo global de la función.")
 
+    # El mínimo global se evalúa en los mínimos calculados, no se asume igual a 0.
     with torch.no_grad():
         valores = func(enjambre.permute(2, 0, 1))
+        valor_minimo = func(minima_tensor.T).min().item()
     if not torch.isfinite(valores).all():
         raise ValueError("El historial contiene NaN o infinito; PSO pudo divergir.")
 
     valores = valores.numpy()
+    posiciones_iniciales = enjambre[0].numpy()
     n_iteraciones, n_particulas = valores.shape
     iteraciones = np.arange(n_iteraciones)
+    valor_convergencia = valor_minimo + tolerancia
 
-    # El mejor global es el menor valor visitado por cualquier partícula hasta t.
-    mejor_global = np.minimum.accumulate(valores.min(axis=1))
+    figure, axis = plt.subplots(figsize=(15, 7), layout="constrained")
+    axis.axhline(
+        valor_convergencia,
+        color="black",
+        linestyle=":",
+        linewidth=4,
+        alpha=0.75,
+        label=f"Valor de convergencia = {valor_convergencia:g}",
+    )
+    axis.axhline(
+        valor_minimo,
+        color="black",
+        linewidth=1.5,
+        label=f"Mínimo global = {valor_minimo:g}",
+    )
 
-    # Con más de ocho partículas los colores se repiten y la forma las distingue.
-    colores = [
-        "#2a78d6",
-        "#eb6834",
-        "#1baf7a",
-        "#eda100",
-        "#e87ba4",
-        "#008300",
-        "#4a3aa7",
-        "#e34948",
-    ]
-    marcadores = ["o", "s", "^", "D", "v"]
-
-    figure, axis = plt.subplots(figsize=(11, 5.5), layout="constrained")
-    handles_particulas = []
+    # Después de diez partículas los colores se repiten y cambian el trazo y el marcador.
+    estilos = [("--", "o"), ("-.", "s"), (":", "^")]
     for indice_particula in range(n_particulas):
-        color = colores[indice_particula % len(colores)]
-        marcador = marcadores[(indice_particula // len(colores)) % len(marcadores)]
+        estilo_linea, marcador = estilos[(indice_particula // 10) % len(estilos)]
+        x_0, y_0 = posiciones_iniciales[indice_particula]
         axis.plot(
             iteraciones,
             valores[:, indice_particula],
-            color=color,
-            alpha=0.25,
-            linewidth=0.7,
-            zorder=2,
-        )
-        axis.scatter(
-            iteraciones,
-            valores[:, indice_particula],
-            color=color,
+            color=f"C{indice_particula % 10}",
+            linestyle=estilo_linea,
             marker=marcador,
-            s=30,
-            edgecolor="white",
-            linewidth=0.5,
-            zorder=3,
-        )
-        handles_particulas.append(
-            plt.Line2D(
-                [0],
-                [0],
-                marker=marcador,
-                color=color,
-                linewidth=0.8,
-                markersize=6,
-                label=f"Partícula {indice_particula}",
-            )
+            markersize=4,
+            label=rf"$\vec{{x}}_{{{indice_particula + 1}}}(0) = $" + f"[{x_0:.4f}, {y_0:.4f}]",
         )
 
-    linea_mejor = axis.plot(
-        iteraciones,
-        mejor_global,
-        color="black",
-        linewidth=2,
-        drawstyle="steps-post",
-        label="Mejor global",
-        zorder=4,
-    )[0]
+    # El tramo lineal llega hasta la tolerancia para separar el mínimo del umbral.
+    axis.set_yscale("symlog", linthresh=tolerancia)
 
-    # Igual que en Optuna, la escala logarítmica se usa si los valores abarcan varios órdenes.
-    if (valores > 0).all() and valores.max() / valores.min() > 100:
-        axis.set_yscale("log")
+    if hiperparametros:
+        texto_hiperparametros = ", ".join(
+            f"{nombre}={valor:.5f}" for nombre, valor in hiperparametros.items()
+        )
+        title = f"{title}\n{texto_hiperparametros}"
 
     axis.set_title(title)
-    axis.set_xlabel("Iteración t")
-    axis.set_ylabel("Valor de f en cada partícula")
-    axis.set_xlim(-0.5, n_iteraciones - 0.5)
-    axis.grid(alpha=0.3)
-
-    figure.legend(
-        handles=[linea_mejor, *handles_particulas],
-        loc="outside right upper",
-        ncol=2 if n_particulas > 10 else 1,
-        fontsize=8,
-        frameon=False,
-    )
+    axis.set_xlabel("Iteración")
+    axis.set_ylabel(r"$f(x, y)$")
+    axis.grid(True)
+    figure.legend(loc="outside right upper")
     plt.show()
     return figure, axis
 
