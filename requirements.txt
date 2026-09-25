@@ -4,7 +4,8 @@ jupyterlab
 matplotlib
 nbconvert
 numpy
-pandas
+# 3.0.6 is blocked by Windows 11 Smart App Control; 3.0.3 loads correctly.
+pandas==3.0.3
 torch
 ipywidgets
 # Hyperparameter calibration
