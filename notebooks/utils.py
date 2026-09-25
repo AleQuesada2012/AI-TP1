@@ -2,6 +2,7 @@ import math
 import random
 import warnings
 
+import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 import numpy as np
 import optuna
@@ -39,6 +40,61 @@ def _points_as_tensor(points):
         raise ValueError("El historial contiene NaN o infinito; GD pudo divergir.")
 
     return points_tensor
+
+
+def _graficar_minimos(axis, minima, local_minima):
+    """!
+    @brief Dibuja los mínimos globales y locales conocidos sobre unos ejes.
+    @param axis Eje de Matplotlib donde se agregan los marcadores.
+    @param minima Uno o varios mínimos globales conocidos.
+    @param local_minima Mínimos locales que se muestran con marcadores pequeños.
+    @return None.
+    """
+    minima_tensor = _points_as_tensor(minima)
+    if minima_tensor is not None:
+        minima_values = minima_tensor.numpy()
+        label = "Mínimo global" if len(minima_values) == 1 else "Mínimos globales"
+        axis.scatter(
+            minima_values[:, 0],
+            minima_values[:, 1],
+            marker="X",
+            s=80,
+            color="gold",
+            edgecolor="black",
+            label=label,
+            zorder=5,
+        )
+
+    local_minima_tensor = _points_as_tensor(local_minima)
+    if local_minima_tensor is not None:
+        local_minima_values = local_minima_tensor.numpy()
+        axis.scatter(
+            local_minima_values[:, 0],
+            local_minima_values[:, 1],
+            marker="o",
+            s=12,
+            color="gold",
+            edgecolor="black",
+            linewidth=0.25,
+            label="Mínimos locales",
+            zorder=5,
+        )
+
+
+def _titulo_con_hiperparametros(title, hiperparametros):
+    """!
+    @brief Agrega al título una línea con los hiperparámetros usados.
+    @param title Título principal de la gráfica.
+    @param hiperparametros Diccionario opcional con nombre y valor de cada hiperparámetro.
+    @return Título con el subtítulo de hiperparámetros, si se proporcionaron.
+    """
+    if not hiperparametros:
+        return title
+
+    texto_hiperparametros = ", ".join(
+        f"{nombre}={valor:.5f}" for nombre, valor in hiperparametros.items()
+    )
+    return f"{title}\n{texto_hiperparametros}"
 
 
 def plot_critical_points(
@@ -275,35 +331,7 @@ def plot_func_hist(
         zorder=7,
     )
 
-    minima_tensor = _points_as_tensor(minima)
-    if minima_tensor is not None:
-        minima_values = minima_tensor.numpy()
-        label = "Mínimo global" if len(minima_values) == 1 else "Mínimos globales"
-        axis.scatter(
-            minima_values[:, 0],
-            minima_values[:, 1],
-            marker="X",
-            s=80,
-            color="gold",
-            edgecolor="black",
-            label=label,
-            zorder=5,
-        )
-
-    local_minima_tensor = _points_as_tensor(local_minima)
-    if local_minima_tensor is not None:
-        local_minima_values = local_minima_tensor.numpy()
-        axis.scatter(
-            local_minima_values[:, 0],
-            local_minima_values[:, 1],
-            marker="o",
-            s=12,
-            color="gold",
-            edgecolor="black",
-            linewidth=0.25,
-            label="Mínimos locales",
-            zorder=5,
-        )
+    _graficar_minimos(axis, minima, local_minima)
 
     if view_limits is not None:
         axis.set_xlim(view_limits)
@@ -392,16 +420,229 @@ def plot_historial_pso(
     # El tramo lineal llega hasta la tolerancia para separar el mínimo del umbral.
     axis.set_yscale("symlog", linthresh=tolerancia)
 
-    if hiperparametros:
-        texto_hiperparametros = ", ".join(
-            f"{nombre}={valor:.5f}" for nombre, valor in hiperparametros.items()
-        )
-        title = f"{title}\n{texto_hiperparametros}"
-
-    axis.set_title(title)
+    axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
     axis.set_xlabel("Iteración")
     axis.set_ylabel(r"$f(x, y)$")
     axis.grid(True)
+    figure.legend(loc="outside right upper")
+    plt.show()
+    return figure, axis
+
+
+def plot_curvas_aprendizaje(
+    historiales_valores,
+    etiquetas,
+    title,
+    valor_minimo,
+    tolerancia=1e-3,
+    hiperparametros=None,
+):
+    """!
+    @brief Grafica varias curvas de aprendizaje y su promedio en una sola figura.
+    @param historiales_valores Historiales f(x_t) de igual longitud, uno por corrida.
+    @param etiquetas Texto de la leyenda para cada historial.
+    @param title Título de la gráfica.
+    @param valor_minimo Valor mínimo global conocido de la función.
+    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
+    @return La figura y sus ejes para permitir ajustes posteriores.
+    """
+    curvas = torch.stack(
+        [torch.as_tensor(historial).detach().cpu().flatten() for historial in historiales_valores]
+    )
+    if curvas.shape[0] != len(etiquetas):
+        raise ValueError("Se necesita una etiqueta por cada curva de aprendizaje.")
+    if not torch.isfinite(curvas).all():
+        raise ValueError("Los historiales contienen NaN o infinito.")
+
+    curvas = curvas.numpy()
+    iteraciones = np.arange(curvas.shape[1])
+    valor_convergencia = valor_minimo + tolerancia
+
+    figure, axis = plt.subplots(figsize=(13, 6), layout="constrained")
+    axis.axhline(
+        valor_convergencia,
+        color="black",
+        linestyle=":",
+        linewidth=4,
+        alpha=0.75,
+        label=f"Valor de convergencia = {valor_convergencia:g}",
+    )
+    axis.axhline(
+        valor_minimo,
+        color="black",
+        linewidth=1.5,
+        label=f"Mínimo global = {valor_minimo:g}",
+    )
+    for indice, (curva, etiqueta) in enumerate(zip(curvas, etiquetas)):
+        axis.plot(
+            iteraciones,
+            curva,
+            color=f"C{indice % 10}",
+            linestyle="--",
+            marker="o",
+            markersize=4,
+            label=etiqueta,
+        )
+    axis.plot(
+        iteraciones,
+        curvas.mean(axis=0),
+        color="black",
+        linewidth=3,
+        label="Promedio",
+    )
+
+    # Igual que en plot_historial_pso, el tramo lineal permite mostrar el 0.
+    axis.set_yscale("symlog", linthresh=tolerancia)
+
+    axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
+    axis.set_xlabel("Iteración")
+    axis.set_ylabel(r"$f(x_t)$")
+    axis.grid(True)
+    figure.legend(loc="outside right upper")
+    plt.show()
+    return figure, axis
+
+
+def plot_enjambre_hist(
+    x_grid,
+    y_grid,
+    func,
+    enjambre_hist,
+    mejor_hist,
+    title,
+    minima=None,
+    local_minima=None,
+):
+    """!
+    @brief Grafica los puntos visitados por cada partícula sobre las curvas de nivel.
+    @param x_grid Valores del eje x usados para construir la malla.
+    @param y_grid Valores del eje y usados para construir la malla.
+    @param func Función que recibe un tensor con las coordenadas x e y.
+    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param mejor_hist Posición del mejor global en cada iteración, con forma (T+1, 2).
+    @param title Título de la gráfica.
+    @param minima Uno o varios mínimos globales conocidos.
+    @param local_minima Mínimos locales que se muestran con marcadores pequeños.
+    @return La figura y sus ejes para permitir ajustes posteriores.
+    """
+    x_values = torch.as_tensor(x_grid).detach().cpu()
+    y_values = torch.as_tensor(y_grid).detach().cpu()
+    enjambre = torch.as_tensor(enjambre_hist).detach().cpu()
+    if enjambre.ndim != 3 or enjambre.shape[2] != 2:
+        raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2).")
+    if not torch.isfinite(enjambre).all():
+        raise ValueError("El historial contiene NaN o infinito; PSO pudo divergir.")
+    mejor = _points_as_tensor(mejor_hist)
+    if mejor is None or mejor.shape[0] != enjambre.shape[0]:
+        raise ValueError("Se necesita una posición del mejor global por iteración.")
+
+    X1, X2 = torch.meshgrid(x_values, y_values, indexing="ij")
+    with torch.no_grad():
+        values = func(torch.stack((X1, X2)))
+
+    # Igual que en plot_func_hist, la escala logarítmica solo cambia los colores.
+    color_values = torch.log1p((values - values.min()).clamp_min(0))
+
+    figure, axis = plt.subplots(figsize=(10.5, 6.5), layout="constrained")
+    contours = axis.contourf(
+        X1.numpy(),
+        X2.numpy(),
+        color_values.detach().cpu().numpy(),
+        levels=50,
+        cmap="viridis",
+    )
+    colorbar = figure.colorbar(contours, ax=axis)
+    colorbar.set_label(r"$\log(1 + f(x,y) - f_{min})$")
+
+    # Los colores coinciden con plot_historial_pso y el borde negro los separa del fondo.
+    borde_negro = [
+        patheffects.Stroke(linewidth=2.5, foreground="black"),
+        patheffects.Normal(),
+    ]
+    posiciones = enjambre.numpy()
+    n_particulas = posiciones.shape[1]
+    colores = [f"C{indice % 10}" for indice in range(n_particulas)]
+    for indice_particula, color in enumerate(colores):
+        etiqueta = f"Partícula {indice_particula + 1}"
+        if indice_particula == 0:
+            etiqueta += " (punto compartido)"
+        axis.plot(
+            posiciones[:, indice_particula, 0],
+            posiciones[:, indice_particula, 1],
+            color=color,
+            linewidth=1.2,
+            marker="o",
+            markersize=3.5,
+            path_effects=borde_negro,
+            label=etiqueta,
+            zorder=3,
+        )
+    axis.scatter(
+        posiciones[0, :, 0],
+        posiciones[0, :, 1],
+        marker="s",
+        s=60,
+        c=colores,
+        edgecolor="black",
+        label="Posiciones iniciales",
+        zorder=4,
+    )
+
+    mejor_valores = mejor.numpy()
+    axis.plot(
+        mejor_valores[:, 0],
+        mejor_valores[:, 1],
+        color="white",
+        linewidth=2,
+        marker="o",
+        markersize=4,
+        markerfacecolor="white",
+        markeredgecolor="black",
+        label="Mejor global",
+        zorder=5,
+    )
+    axis.scatter(
+        mejor_valores[-1, 0],
+        mejor_valores[-1, 1],
+        marker="*",
+        s=160,
+        color="crimson",
+        edgecolor="black",
+        label="Mejor global final",
+        zorder=7,
+    )
+
+    _graficar_minimos(axis, minima, local_minima)
+
+    # El recuadro conserva la malla; se indica cuántas posiciones salieron de ella.
+    x_limits = (float(x_values.min()), float(x_values.max()))
+    y_limits = (float(y_values.min()), float(y_values.max()))
+    fuera_del_recuadro = (
+        (posiciones[..., 0] < x_limits[0])
+        | (posiciones[..., 0] > x_limits[1])
+        | (posiciones[..., 1] < y_limits[0])
+        | (posiciones[..., 1] > y_limits[1])
+    )
+    if fuera_del_recuadro.any():
+        axis.text(
+            0.02,
+            0.02,
+            f"{int(fuera_del_recuadro.sum())} de {fuera_del_recuadro.size} "
+            "posiciones visitadas quedan fuera del recuadro",
+            transform=axis.transAxes,
+            fontsize=8,
+            bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "none"},
+            zorder=8,
+        )
+
+    axis.set_xlim(x_limits)
+    axis.set_ylim(y_limits)
+    axis.set_title(title)
+    axis.set_xlabel("x")
+    axis.set_ylabel("y")
+    axis.set_aspect("equal", adjustable="box")
+    axis.grid(alpha=0.2)
     figure.legend(loc="outside right upper")
     plt.show()
     return figure, axis
@@ -741,10 +982,13 @@ def crear_objetivo_optuna(
     epsilon_rmsprop,
     ejecutar_gd,
     ejecutar_rmsprop,
+    ejecutar_pso=None,
+    n_particulas_pso=5,
+    semilla_pso=0,
 ):
     """!
     @brief Crea un objetivo Optuna basado en el promedio del valor final.
-    @param algoritmo Nombre del algoritmo: GD o RMSProp.
+    @param algoritmo Nombre del algoritmo: GD, RMSProp o PSO.
     @param configuracion Función, mínimo conocido y rangos de búsqueda.
     @param puntos_iniciales Puntos compartidos por todos los ensayos.
     @param iteraciones Cantidad fija de actualizaciones por corrida.
@@ -752,8 +996,14 @@ def crear_objetivo_optuna(
     @param epsilon_rmsprop Constante de estabilidad fija de RMSProp.
     @param ejecutar_gd Función que ejecuta descenso del gradiente.
     @param ejecutar_rmsprop Función que ejecuta RMSProp.
+    @param ejecutar_pso Función que ejecuta el enjambre de partículas.
+    @param n_particulas_pso Cantidad fija de partículas del enjambre.
+    @param semilla_pso Semilla base de PSO; cada punto usa semilla_pso + su índice.
     @return Función objetivo compatible con Optuna.
     """
+    if algoritmo == "PSO" and ejecutar_pso is None:
+        raise ValueError("Se necesita ejecutar_pso para calibrar PSO.")
+
     funcion = configuracion["funcion"]
     valor_minimo = configuracion["valor_minimo"]
 
@@ -783,13 +1033,24 @@ def crear_objetivo_optuna(
                 configuracion["gamma_min"],
                 configuracion["gamma_max"],
             )
+        elif algoritmo == "PSO":
+            c1 = trial.suggest_float(
+                "c1",
+                configuracion["pso_c1_min"],
+                configuracion["pso_c1_max"],
+            )
+            c2 = trial.suggest_float(
+                "c2",
+                configuracion["pso_c2_min"],
+                configuracion["pso_c2_max"],
+            )
         else:
             raise ValueError(f"Algoritmo no soportado: {algoritmo}")
 
         resultados = []
         valores_finales = []
 
-        for punto_inicial in puntos_iniciales:
+        for indice_punto, punto_inicial in enumerate(puntos_iniciales):
             try:
                 if algoritmo == "GD":
                     _, valores_historial = ejecutar_gd(
@@ -798,7 +1059,7 @@ def crear_objetivo_optuna(
                         func=funcion,
                         punto_inicial=punto_inicial,
                     )
-                else:
+                elif algoritmo == "RMSProp":
                     _, valores_historial = ejecutar_rmsprop(
                         alpha=alpha,
                         gamma=gamma,
@@ -806,6 +1067,18 @@ def crear_objetivo_optuna(
                         t=iteraciones,
                         func=funcion,
                         punto_inicial=punto_inicial,
+                    )
+                else:
+                    # La misma semilla en todos los ensayos fija el resto del enjambre y
+                    # los coeficientes aleatorios; así los ensayos solo difieren en c1 y c2.
+                    torch.manual_seed(semilla_pso + indice_punto)
+                    _, valores_historial, _ = ejecutar_pso(
+                        T=iteraciones,
+                        c1=c1,
+                        c2=c2,
+                        func=funcion,
+                        punto_inicial=punto_inicial,
+                        n_particulas=n_particulas_pso,
                     )
             except ValueError as error:
                 raise optuna.TrialPruned(str(error)) from error
@@ -973,24 +1246,28 @@ def graficar_mejor_corrida(
     funciones_evaluacion,
     x_grid,
     y_grid,
+    enjambres_evaluacion=None,
+    tolerancia=1e-3,
 ):
     """!
     @brief Grafica la trayectoria y curva de la corrida más rápida.
-    @param algoritmo Nombre del algoritmo: GD o RMSProp.
+    @param algoritmo Nombre del algoritmo: GD, RMSProp o PSO.
     @param nombre_funcion Identificador de la función: f0, f1 o f2.
     @param mejores_corridas Selecciones calculadas para cada combinación.
     @param historiales_evaluacion Historiales de puntos y valores por corrida.
     @param funciones_evaluacion Metadatos de las funciones objetivo.
     @param x_grid Valores del eje x usados para construir la malla.
     @param y_grid Valores del eje y usados para construir la malla.
+    @param enjambres_evaluacion Posiciones de todas las partículas en cada corrida de PSO.
+    @param tolerancia Brecha usada para dibujar el valor de convergencia de PSO.
     @return None.
     """
     seleccion = mejores_corridas[(algoritmo, nombre_funcion)]
     corrida = int(seleccion["corrida"])
-    puntos_historial, valores_historial = historiales_evaluacion[
-        (algoritmo, nombre_funcion, corrida)
-    ]
+    clave = (algoritmo, nombre_funcion, corrida)
+    puntos_historial, valores_historial = historiales_evaluacion[clave]
     datos_funcion = funciones_evaluacion[nombre_funcion]
+    enjambre_historial = None if enjambres_evaluacion is None else enjambres_evaluacion.get(clave)
 
     if seleccion["estado"] == "Convergió":
         indice_final = int(seleccion["índice de reporte"])
@@ -1005,16 +1282,39 @@ def graficar_mejor_corrida(
         f"{algoritmo} sobre {nombre_funcion}, corrida {corrida}: "
         f"{descripcion}; f={seleccion['valor reportado']:.6f}."
     )
-    plot_func_hist(
-        x_grid,
-        y_grid,
-        datos_funcion["funcion"],
-        puntos_mostrados,
-        title=(f"Mejor trayectoria de {algoritmo} sobre {nombre_funcion}"),
-        minima=datos_funcion["minimos"],
-        local_minima=datos_funcion["minimos_locales"],
-    )
+    if enjambre_historial is None:
+        plot_func_hist(
+            x_grid,
+            y_grid,
+            datos_funcion["funcion"],
+            puntos_mostrados,
+            title=(f"Mejor trayectoria de {algoritmo} sobre {nombre_funcion}"),
+            minima=datos_funcion["minimos"],
+            local_minima=datos_funcion["minimos_locales"],
+        )
+    else:
+        # En PSO los puntos visitados son las posiciones de todas las partículas.
+        enjambre_mostrado = enjambre_historial[: indice_final + 1]
+        plot_enjambre_hist(
+            x_grid,
+            y_grid,
+            datos_funcion["funcion"],
+            enjambre_mostrado,
+            puntos_mostrados,
+            title=(f"Puntos visitados por {algoritmo} sobre {nombre_funcion} (corrida {corrida})"),
+            minima=datos_funcion["minimos"],
+            local_minima=datos_funcion["minimos_locales"],
+        )
     plot_learning_curve(
         valores_mostrados,
         title=(f"Curva de aprendizaje de {algoritmo} sobre {nombre_funcion}"),
     )
+    if enjambre_historial is not None:
+        plot_historial_pso(
+            datos_funcion["funcion"],
+            enjambre_mostrado,
+            title=(f"Evolución de f en cada partícula de {algoritmo} sobre {nombre_funcion}"),
+            minima=datos_funcion["minimos"],
+            tolerancia=tolerancia,
+            hiperparametros={"c1": seleccion["c1"], "c2": seleccion["c2"]},
+        )

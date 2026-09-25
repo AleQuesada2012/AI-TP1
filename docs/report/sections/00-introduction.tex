@@ -25,8 +25,11 @@ La implementación completa vive en el notebook autocontenido
 \texttt{notebooks/tp1\_optimizacion.ipynb}; este informe resume y explica
 esa implementación sin duplicar el código fuente.
 
-% TODO: Resumir aquí el criterio de convergencia único usado en las tablas
-% comparativas (norma del gradiente vs. distancia al mínimo conocido) una
-% vez quede definido en la sección "Objetivo y protocolo" del notebook.
-% TODO: Mencionar explícitamente el estado de cada algoritmo (completo,
-% parcial, pendiente) cuando el trabajo esté más avanzado.
+% TODO: Resumir aquí el criterio de convergencia usado en las tablas
+% comparativas, ya definido en la sección "Objetivo y protocolo" del
+% notebook: una corrida converge en la primera iteración con
+% |f(x_t) - f*| <= 1e-3 (en PSO se usa el valor del mejor global).
+% TODO: Mencionar el estado de cada algoritmo: descenso del gradiente,
+% RMSProp y PSO ya están implementados, calibrados con Optuna y evaluados
+% con el protocolo de 10 corridas; faltan las pruebas unitarias de descenso
+% del gradiente y las preguntas conceptuales.

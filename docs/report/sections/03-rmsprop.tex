@@ -43,20 +43,22 @@ origen, no a una falla del algoritmo.
 
 \subsection{Calibración de hiperparámetros}
 
-% TODO: Calibrar alpha (y opcionalmente gamma/epsilon) de RMSProp con
-% Optuna, igual que se hizo para descenso del gradiente
-% (Sección~\ref{sec:gd_optuna}), y reportar los mejores valores
-% encontrados junto con las gráficas del proceso de calibrado.
+% TODO: Documentar la calibración de RMSProp con Optuna que ya está en el
+% notebook: ajusta alpha y gamma (epsilon fijo en 1e-6) con 25 iteraciones
+% fijas. Reportar los mejores valores (tabla "Mejores hiperparámetros
+% encontrados con Optuna") junto con las gráficas del proceso de búsqueda.
 
 \subsection{Pruebas unitarias}
 
 Ver la Sección~\ref{sec:pruebas} para la documentación de las dos pruebas
 unitarias ya implementadas para RMSProp.
 
-% TODO: Documentar en esta sección el protocolo de 10 corridas (máximo 50
-% iteraciones), el valor promedio de la función minimizada y la cantidad
-% promedio de iteraciones para converger.
-% TODO: Graficar la trayectoria y la curva de aprendizaje de la corrida
-% con convergencia más rápida, para cada función.
+% TODO: Documentar el protocolo de 10 corridas (máximo 50 iteraciones), ya
+% ejecutado en la sección "Evaluación con los mejores hiperparámetros" del
+% notebook: valor promedio de la función minimizada y cantidad promedio de
+% iteraciones para converger.
+% TODO: Insertar la trayectoria y la curva de aprendizaje de la corrida con
+% convergencia más rápida para cada función (sección "Mejores corridas por
+% velocidad de convergencia" del notebook).
 % TODO: Responder por qué RMSProp evita mejor los puntos silla que el
 % descenso del gradiente (ver Sección~\ref{sec:comparacion}).

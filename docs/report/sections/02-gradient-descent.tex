@@ -35,6 +35,13 @@ manualmente para evitar divergencia:
 \subsection{Calibración de hiperparámetros con Optuna}
 \label{sec:gd_optuna}
 
+% TODO: Actualizar esta subsección con la calibración actual del notebook.
+% Ahora Optuna ajusta solo alpha con 25 iteraciones fijas y minimiza el
+% promedio de f al final en los 6 puntos de ajuste, sin penalizaciones. El
+% texto y la tabla siguientes corresponden a una versión anterior (alpha e
+% iteraciones, con penalización); los valores vigentes están en la tabla
+% "Mejores hiperparámetros encontrados con Optuna" del notebook.
+
 Se calibraron $\alpha$ y la cantidad de iteraciones con Optuna
 (muestreador TPE, semilla fija), evaluando cada ensayo como el promedio de
 $f(x_{\text{final}})$ sobre 6 puntos iniciales fijos compartidos entre
@@ -64,13 +71,12 @@ sección anterior. En Ackley el promedio permanece lejos de cero porque los
 puntos iniciales fijos caen en cuencas de atracción de distintos mínimos
 locales.
 
-% TODO: Repetir el protocolo de 10 corridas por función con los mejores
-% hiperparámetros (máximo 50 iteraciones), documentando en una tabla si
-% cada corrida converge y en cuántas iteraciones lo hace.
-% TODO: Reportar el valor promedio de la función minimizada y la cantidad
-% promedio de iteraciones para converger, sobre esas 10 corridas.
-% TODO: Graficar la trayectoria (curvas de nivel) y la curva de
-% aprendizaje de la corrida con convergencia más rápida, para cada
-% función.
-% TODO: Comparar formalmente contra RMSProp una vez esa calibración esté
-% lista (ver Sección~\ref{sec:comparacion}).
+% TODO: Documentar el protocolo de 10 corridas (máximo 50 iteraciones), que
+% ya está ejecutado en la sección "Evaluación con los mejores
+% hiperparámetros" del notebook: tabla de convergencia por corrida, valor
+% promedio de la función minimizada e iteraciones promedio para converger.
+% TODO: Insertar la trayectoria (curvas de nivel) y la curva de aprendizaje
+% de la corrida con convergencia más rápida para cada función (sección
+% "Mejores corridas por velocidad de convergencia" del notebook).
+% TODO: Comparar formalmente contra RMSProp (punto 2f), ver
+% Sección~\ref{sec:comparacion}.
