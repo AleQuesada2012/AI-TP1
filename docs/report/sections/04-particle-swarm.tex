@@ -5,20 +5,24 @@
 % PyTorch), calibrado con Optuna y evaluado con el protocolo de 10 corridas.
 % Falta redactar esta sección con la misma estructura que las Secciones 2 y 3:
 %   - Formulación: v <- v + c1 r1 (p - x) + c2 r2 (g - x) y x <- x + v, sin
-%     peso de inercia. El enjambre usa 5 partículas y el punto inicial
-%     compartido es la posición inicial de la primera partícula.
-%   - Calibración (punto 3a): Optuna ajusta c1 y c2 en [0.05, 2.5] con 25
-%     iteraciones fijas. Reportar la tabla "Mejores hiperparámetros
-%     encontrados con Optuna" y, como evidencia, las figuras de la
-%     subsección "5. Curvas de aprendizaje de PSO con los mejores
-%     hiperparámetros" del notebook.
+%     peso de inercia. El punto inicial compartido es la posición inicial
+%     de la primera partícula y las otras n - 1 se generan al azar.
+%   - Calibración (punto 3a): Optuna ajusta c1 y c2 en [0.05, 2.5] y la
+%     cantidad de partículas n en [25, 45], con 25 iteraciones fijas.
+%     Reportar la tabla "Mejores hiperparámetros encontrados con Optuna" y,
+%     como evidencia, las figuras de la subsección "5. Curvas de aprendizaje
+%     de PSO con los mejores hiperparámetros" del notebook.
 %   - Protocolo de 10 corridas (punto 3b): mismos 10 puntos iniciales que
 %     descenso del gradiente y RMSProp, máximo 50 iteraciones; usar las
 %     tablas de la sección "Evaluación con los mejores hiperparámetros".
-%     Ninguna corrida alcanza la tolerancia de 1e-3: sin inercia, las
-%     partículas siguen oscilando alrededor del mejor global.
-%   - Mejor corrida (punto 3c): puntos visitados por el enjambre sobre las
-%     curvas de nivel, curva de aprendizaje y evolución de f por partícula.
+%     Solo converge en f0 (4 de 10 corridas); en f1 y f2 no alcanza la
+%     tolerancia de 1e-3, aunque obtiene el menor promedio de los tres
+%     algoritmos. Sin inercia, las partículas siguen oscilando alrededor
+%     del mejor global.
+%   - Mejor corrida (punto 3c): igual que en GD y RMSProp, trayectoria sobre
+%     las curvas de nivel de la partícula que llegó más cerca del mínimo,
+%     curva de aprendizaje, evolución de f por partícula y evolución de esa
+%     partícula.
 %   - Respuesta a cómo se podría combinar descenso del gradiente con
 %     simulated annealing y qué beneficios tendría (punto 3d).
 %   - Pruebas unitarias documentadas en la Sección~\ref{sec:pruebas}.
