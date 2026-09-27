@@ -10,6 +10,8 @@ import optuna
 import pandas as pd
 import torch
 from IPython.display import display
+from matplotlib import patheffects
+from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullLocator
 
 
@@ -158,6 +160,7 @@ def plot_critical_points(
     @param saddle_points Lista de tensores con puntos silla.
     @param title Título de la gráfica.
     @param view_limits Límites opcionales (mínimo, máximo) para ambos ejes.
+    @return None.
     """
     x_values = x_grid.detach().cpu().numpy()
     y_values = y_grid.detach().cpu().numpy()
@@ -251,6 +254,7 @@ def plot_learning_curve(function_values, title="Curva de aprendizaje"):
         raise ValueError("El historial contiene NaN o infinito; GD pudo divergir.")
 
     iterations = torch.arange(values.numel())
+    plot_values = values.numpy()
     figure, axis = plt.subplots(figsize=(8, 4.5))
     axis.plot(
         iterations,
@@ -280,9 +284,20 @@ def plot_learning_curve(function_values, title="Curva de aprendizaje"):
         zorder=3,
     )
 
+    # La escala lineal aplana el tramo final cuando las primeras iteraciones
+    # son varios órdenes de magnitud mayores que las últimas.
+    magnitudes = np.abs(plot_values[plot_values != 0])
+    if magnitudes.size and magnitudes.max() / magnitudes.min() >= 100:
+        if np.all(plot_values > 0):
+            axis.set_yscale("log")
+        else:
+            axis.set_yscale("symlog", linthresh=max(float(magnitudes.min()), 1e-8))
+        axis.set_ylabel(r"$f(x_t)$ (escala logarítmica)")
+    else:
+        axis.set_ylabel(r"$f(x_t)$")
+
     axis.set_title(title)
     axis.set_xlabel("Iteración t")
-    axis.set_ylabel(r"$f(x_t)$")
     axis.grid(alpha=0.3)
     axis.legend()
     figure.tight_layout()
@@ -301,7 +316,7 @@ def plot_func_hist(
     view_limits=None,
 ):
     """!
-    @brief Grafica la trayectoria del algoritmo sobre las curvas de nivel.
+    @brief Grafica la trayectoria sobre una malla que cubre todos los puntos visitados.
     @param x_grid Valores del eje x usados para construir la malla.
     @param y_grid Valores del eje y usados para construir la malla.
     @param func Función que recibe un tensor con las coordenadas x e y.
@@ -309,7 +324,7 @@ def plot_func_hist(
     @param title Título de la gráfica.
     @param minima Uno o varios mínimos globales conocidos.
     @param local_minima Mínimos locales que se muestran con marcadores pequeños.
-    @param view_limits Límites opcionales (mínimo, máximo) para ambos ejes.
+    @param view_limits Límites opcionales (mínimo, máximo) que sustituyen la vista automática.
     @return La figura y sus ejes para permitir ajustes posteriores.
     """
     x_values = torch.as_tensor(x_grid).detach().cpu()
@@ -318,27 +333,99 @@ def plot_func_hist(
     if path is None or path.shape[0] == 0:
         raise ValueError("El historial de puntos no puede estar vacío.")
 
+    limites_originales_x = (float(x_values.min()), float(x_values.max()))
+    limites_originales_y = (float(y_values.min()), float(y_values.max()))
+    x_values_originales = x_values
+    y_values_originales = y_values
+    puntos_visibles = [path.numpy()]
+    for puntos_conocidos in (minima, local_minima):
+        tensor_puntos = _points_as_tensor(puntos_conocidos)
+        if tensor_puntos is not None:
+            puntos_visibles.append(tensor_puntos.numpy())
+    puntos_visibles = np.concatenate(puntos_visibles)
+
+    limite_x_inferior = min(limites_originales_x[0], float(puntos_visibles[:, 0].min()))
+    limite_x_superior = max(limites_originales_x[1], float(puntos_visibles[:, 0].max()))
+    limite_y_inferior = min(limites_originales_y[0], float(puntos_visibles[:, 1].min()))
+    limite_y_superior = max(limites_originales_y[1], float(puntos_visibles[:, 1].max()))
+    malla_ampliada = view_limits is None and (
+        limite_x_inferior < limites_originales_x[0]
+        or limite_x_superior > limites_originales_x[1]
+        or limite_y_inferior < limites_originales_y[0]
+        or limite_y_superior > limites_originales_y[1]
+    )
+    if malla_ampliada:
+        # El margen depende del recorrido; se conserva la cantidad original de muestras.
+        margen_x = 0.05 * (limite_x_superior - limite_x_inferior)
+        margen_y = 0.05 * (limite_y_superior - limite_y_inferior)
+        x_values = torch.linspace(
+            limite_x_inferior - margen_x,
+            limite_x_superior + margen_x,
+            x_values.numel(),
+            dtype=x_values.dtype,
+        )
+        y_values = torch.linspace(
+            limite_y_inferior - margen_y,
+            limite_y_superior + margen_y,
+            y_values.numel(),
+            dtype=y_values.dtype,
+        )
+
     X1, X2 = torch.meshgrid(x_values, y_values, indexing="ij")
     with torch.no_grad():
         values = func(torch.stack((X1, X2)))
+        if malla_ampliada:
+            X1_original, X2_original = torch.meshgrid(
+                x_values_originales, y_values_originales, indexing="ij"
+            )
+            valores_originales = func(torch.stack((X1_original, X2_original)))
 
     # El cambio de escala hace visibles los valles sin modificar la trayectoria.
-    color_values = torch.log1p((values - values.min()).clamp_min(0))
+    valor_minimo = values.min()
+    niveles = 50
+    extension = "neither"
+    if malla_ampliada:
+        valor_minimo = torch.minimum(valor_minimo, valores_originales.min())
+        # La escala conserva el contraste del dominio de referencia aunque
+        # aparezcan valores mayores en la zona nueva.
+        maximo_referencia = torch.log1p(
+            (valores_originales - valor_minimo).clamp_min(0)
+        ).max().item()
+        if maximo_referencia > 0:
+            niveles = np.linspace(0, maximo_referencia, 51)
+            extension = "max"
+    color_values = torch.log1p((values - valor_minimo).clamp_min(0))
 
     figure, axis = plt.subplots(figsize=(8, 6.5))
     contours = axis.contourf(
         X1.numpy(),
         X2.numpy(),
         color_values.detach().cpu().numpy(),
-        levels=50,
+        levels=niveles,
         cmap="viridis",
+        extend=extension,
     )
     colorbar = figure.colorbar(contours, ax=axis)
     colorbar.set_label(r"$\log(1 + f(x,y) - f_{min})$")
 
+    if malla_ampliada:
+        axis.add_patch(
+            Rectangle(
+                (limites_originales_x[0], limites_originales_y[0]),
+                limites_originales_x[1] - limites_originales_x[0],
+                limites_originales_y[1] - limites_originales_y[0],
+                fill=False,
+                edgecolor="black",
+                linestyle="--",
+                linewidth=1.2,
+                label="Dominio de referencia",
+                zorder=3,
+            )
+        )
+
     path_values = path.numpy()
-    marker_interval = max(1, len(path_values) // 50)
-    axis.plot(
+    marker_interval = max(1, int(np.ceil(len(path_values) / 15)))
+    trajectory_line, = axis.plot(
         path_values[:, 0],
         path_values[:, 1],
         color="white",
@@ -350,6 +437,9 @@ def plot_func_hist(
         markeredgecolor="black",
         label="Trayectoria",
         zorder=4,
+    )
+    trajectory_line.set_path_effects(
+        [patheffects.Stroke(linewidth=2.8, foreground="black"), patheffects.Normal()]
     )
     axis.scatter(
         path_values[0, 0],
@@ -377,6 +467,9 @@ def plot_func_hist(
     if view_limits is not None:
         axis.set_xlim(view_limits)
         axis.set_ylim(view_limits)
+    else:
+        axis.set_xlim(float(x_values.min()), float(x_values.max()))
+        axis.set_ylim(float(y_values.min()), float(y_values.max()))
 
     axis.set_title(title)
     axis.set_xlabel("x")
@@ -400,7 +493,7 @@ def plot_historial_pso(
     resaltar_minimo=False,
 ):
     """!
-    @brief Grafica la evolución de f en cada partícula de PSO respecto a la convergencia.
+    @brief Grafica en escala lineal las partículas de PSO seleccionadas.
     @param func Función que recibe un tensor con las coordenadas x e y.
     @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
     @param title Título de la gráfica.
@@ -432,23 +525,21 @@ def plot_historial_pso(
     iteraciones = np.arange(n_iteraciones)
     valor_convergencia = valor_minimo + tolerancia
 
-    figure, axis = plt.subplots(figsize=(15, 7), layout="constrained")
-    axis.axhline(
-        valor_convergencia,
-        color="black",
-        linestyle=":",
-        linewidth=4,
-        alpha=0.75,
-        label=f"Valor de convergencia = {valor_convergencia:g}",
+    figure, axis = plt.subplots(
+        figsize=(13, 6) if len(indices) > 1 else (12, 6),
+        layout="constrained",
     )
     axis.axhline(
-        valor_minimo,
-        color="black",
+        valor_convergencia,
+        color="darkred",
+        linestyle=":",
         linewidth=1.5,
-        label=f"Mínimo global = {valor_minimo:g}",
+        label=f"Convergencia = {valor_convergencia:g}",
+        zorder=4,
     )
 
     # Cada partícula conserva su color y trazo aunque solo se grafique una parte del enjambre.
+    intervalo_marcadores = max(1, n_iteraciones // 12)
     for indice_particula in indices:
         color, estilo_linea, marcador = _estilo_particula(indice_particula)
         x_0, y_0 = posiciones[0, indice_particula]
@@ -458,8 +549,11 @@ def plot_historial_pso(
             color=color,
             linestyle=estilo_linea,
             marker=marcador,
-            markersize=4,
-            label=rf"$\vec{{x}}_{{{indice_particula + 1}}}(0) = $" + f"[{x_0:.4f}, {y_0:.4f}]",
+            markevery=intervalo_marcadores,
+            markersize=3,
+            linewidth=1.3,
+            alpha=0.8,
+            label=f"Partícula {indice_particula + 1}: ({x_0:.2f}, {y_0:.2f})",
         )
 
     if resaltar_minimo:
@@ -484,16 +578,52 @@ def plot_historial_pso(
             zorder=5,
         )
 
-    # El tramo lineal llega hasta la tolerancia para separar el mínimo del umbral.
-    axis.set_yscale("symlog", linthresh=tolerancia)
-
     axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
     axis.set_xlabel("Iteración")
     axis.set_ylabel(r"$f(x, y)$")
-    axis.grid(True)
+    axis.grid(alpha=0.3)
     _leyenda_exterior(figure, axis)
     plt.show()
     return figure, axis
+
+
+def plot_historial_pso_en_grupos(
+    func,
+    enjambre_hist,
+    title,
+    minima,
+    tolerancia=1e-3,
+    hiperparametros=None,
+):
+    """!
+    @brief Grafica el enjambre de PSO en grupos consecutivos de hasta diez partículas.
+    @param func Función que recibe un tensor con las coordenadas x e y.
+    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param title Título común de las gráficas.
+    @param minima Uno o varios mínimos globales calculados para la función.
+    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
+    @return Lista de pares (figura, ejes), uno por cada grupo de partículas.
+    """
+    enjambre = torch.as_tensor(enjambre_hist)
+    if enjambre.ndim != 3 or enjambre.shape[2] != 2 or enjambre.shape[1] == 0:
+        raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2) con n > 0.")
+
+    graficas = []
+    for inicio in range(0, enjambre.shape[1], 10):
+        fin = min(inicio + 10, enjambre.shape[1])
+        graficas.append(
+            plot_historial_pso(
+                func,
+                enjambre,
+                title=f"{title} (partículas {inicio + 1}–{fin})",
+                minima=minima,
+                tolerancia=tolerancia,
+                hiperparametros=hiperparametros,
+                particulas=range(inicio, fin),
+            )
+        )
+    return graficas
 
 
 def mejor_particula_pso(func, enjambre_hist):
@@ -557,7 +687,7 @@ def plot_curvas_aprendizaje(
     hiperparametros=None,
 ):
     """!
-    @brief Grafica varias curvas de aprendizaje y su promedio en una sola figura.
+    @brief Grafica varias curvas de aprendizaje y su promedio en escala lineal.
     @param historiales_valores Historiales f(x_t) de igual longitud, uno por corrida.
     @param etiquetas Texto de la leyenda para cada historial.
     @param title Título de la gráfica.
@@ -581,18 +711,13 @@ def plot_curvas_aprendizaje(
     figure, axis = plt.subplots(figsize=(13, 6), layout="constrained")
     axis.axhline(
         valor_convergencia,
-        color="black",
+        color="darkred",
         linestyle=":",
-        linewidth=4,
-        alpha=0.75,
-        label=f"Valor de convergencia = {valor_convergencia:g}",
-    )
-    axis.axhline(
-        valor_minimo,
-        color="black",
         linewidth=1.5,
-        label=f"Mínimo global = {valor_minimo:g}",
+        label=f"Convergencia = {valor_convergencia:g}",
+        zorder=4,
     )
+    intervalo_marcadores = max(1, len(iteraciones) // 12)
     for indice, (curva, etiqueta) in enumerate(zip(curvas, etiquetas)):
         axis.plot(
             iteraciones,
@@ -600,24 +725,24 @@ def plot_curvas_aprendizaje(
             color=f"C{indice % 10}",
             linestyle="--",
             marker="o",
-            markersize=4,
+            markevery=intervalo_marcadores,
+            markersize=3,
+            linewidth=1.2,
+            alpha=0.75,
             label=etiqueta,
         )
     axis.plot(
         iteraciones,
         curvas.mean(axis=0),
         color="black",
-        linewidth=3,
+        linewidth=2.5,
         label="Promedio",
     )
-
-    # Igual que en plot_historial_pso, el tramo lineal permite mostrar el 0.
-    axis.set_yscale("symlog", linthresh=tolerancia)
 
     axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
     axis.set_xlabel("Iteración")
     axis.set_ylabel(r"$f(x_t)$")
-    axis.grid(True)
+    axis.grid(alpha=0.3)
     figure.legend(loc="outside right upper")
     plt.show()
     return figure, axis
@@ -667,6 +792,7 @@ def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
     x_values = torch.as_tensor(x_grid).detach().cpu().numpy()
     y_values = torch.as_tensor(y_grid).detach().cpu().numpy()
     z_values = torch.as_tensor(values).detach().cpu().numpy()
+    color_values = np.log1p(np.clip(z_values - z_values.min(), 0, None))
     x_limits = (float(x_values.min()), float(x_values.max()))
     y_limits = (float(y_values.min()), float(y_values.max()))
 
@@ -677,7 +803,7 @@ def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
     contours = contour_axis.contourf(
         x_values,
         y_values,
-        z_values,
+        color_values,
         levels=50,
         cmap="viridis",
     )
@@ -690,7 +816,7 @@ def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
     )
     contour_axis.set_aspect("equal", adjustable="box")
     contour_colorbar = figure.colorbar(contours, ax=contour_axis)
-    contour_colorbar.set_label(z_label)
+    contour_colorbar.set_label(r"$\log(1 + f(x,y) - f_{\min})$")
 
     surface_axis = figure.add_subplot(1, 2, 2, projection="3d")
     surface = surface_axis.plot_surface(
@@ -1153,7 +1279,16 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
         raise ValueError("El estudio no contiene ensayos completos para graficar.")
 
     valores = [trial.value for trial in ensayos]
-    usar_escala_log = all(valor > 0 for valor in valores) and max(valores) / min(valores) > 100
+    magnitudes = np.abs(np.asarray(valores))
+    magnitudes_positivas = magnitudes[magnitudes > 0]
+    escala_amplia = (
+        magnitudes_positivas.size > 0
+        and magnitudes_positivas.max() / magnitudes_positivas.min() > 100
+    )
+    escala_y = (
+        "log" if escala_amplia and all(valor > 0 for valor in valores)
+        else "symlog" if escala_amplia else "linear"
+    )
 
     with warnings.catch_warnings():
         warnings.simplefilter(
@@ -1167,8 +1302,10 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
 
     axis.set_title(f"Historial de optimización: {algoritmo} sobre {nombre_funcion}")
     axis.figure.set_size_inches(8, 4.5)
-    if usar_escala_log:
+    if escala_y == "log":
         axis.set_yscale("log")
+    elif escala_y == "symlog":
+        axis.set_yscale("symlog", linthresh=max(float(magnitudes_positivas.min()), 1e-8))
     plt.show()
 
     ancho = 7 if len(parametros) == 1 else 6 * len(parametros)
@@ -1206,8 +1343,10 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
         distribucion = ensayos[0].distributions[parametro]
         if getattr(distribucion, "log", False):
             _configurar_eje_logaritmico(current_axis, distribucion)
-        if usar_escala_log:
+        if escala_y == "log":
             current_axis.set_yscale("log")
+        elif escala_y == "symlog":
+            current_axis.set_yscale("symlog", linthresh=max(float(magnitudes_positivas.min()), 1e-8))
 
     axes[0].set_ylabel("Promedio de f al final")
     axes[0].legend()
@@ -1296,7 +1435,7 @@ def graficar_mejor_corrida(
             "c2": seleccion["c2"],
             "n_particulas": int(seleccion["n_particulas"]),
         }
-        plot_historial_pso(
+        plot_historial_pso_en_grupos(
             datos_funcion["funcion"],
             enjambre_mostrado,
             title=(f"Evolución de f en cada partícula de {algoritmo} sobre {nombre_funcion}"),
