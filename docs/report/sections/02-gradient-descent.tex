@@ -54,30 +54,39 @@ generan con \texttt{random.Random(2026)}.}
     del mínimo $(-3.779310,\ -3.283186)$.
 \end{itemize}
 
+La Figura~\ref{fig:gd_demo} muestra las curvas de aprendizaje y las
+trayectorias de estas corridas.
+
 \begin{figure}[H]
 \centering
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f0}
+\caption{Trayectoria en $f_0$.}
 \end{subfigure}
 
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f1}
+\caption{Trayectoria en $f_1$.}
 \end{subfigure}
 
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f2}
+\caption{Trayectoria en $f_2$.}
 \end{subfigure}
 \caption{Curvas de aprendizaje y trayectorias de la demostración de GD
 (Tabla~\ref{tab:gd_demo}).}
@@ -102,8 +111,8 @@ divergencia.
 Función & Mejor $\alpha$ & Convergencias & Iter.\ promedio & Promedio $f$ final \\
 \midrule
 $f_0$ & $0.483072$ & 6/6 & $2.00$  & $2.21\times10^{-72}$ \\
-$f_1$ & $0.297839$ & 0/6 & ---     & $5.889887$ \\
-$f_2$ & $0.005492$ & 2/6 & $16.00$ & $15.046440$ \\
+$f_1$ & $0.208347$ & 0/6 & ---     & $6.271274$ \\
+$f_2$ & $0.005492$ & 2/6 & $16.00$ & $15.046441$ \\
 \bottomrule
 \end{tabular}
 \caption{Mejores valores de $\alpha$ encontrados por Optuna para GD (25
@@ -118,7 +127,7 @@ historial de optimización con el valor de cada ensayo y el mejor valor
 acumulado, y el efecto de $\alpha$ sobre el objetivo. En $f_0$, cualquier
 $\alpha$ cercano a $0.5$ es casi óptimo porque $x_{t+1}=(1-2\alpha)x_t$ y
 $\alpha=0.5$ lleva al mínimo en un solo paso. En $f_1$, el mejor $\alpha$
-es grande ($0.297839$): con pasos largos GD salta entre cuencas de Ackley
+es grande ($0.208347$): con pasos largos GD salta entre cuencas de Ackley
 en lugar de quedarse en el primer mínimo local, lo que reduce el promedio
 pero no alcanza la tolerancia en ningún punto de ajuste. En $f_2$ el
 compromiso es entre avanzar suficiente en 25 pasos y no divergir en las
@@ -128,31 +137,73 @@ zonas empinadas.
 \centering
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f0}
+\caption{Historial de optimización en $f_0$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f0}
+\caption{Efecto de $\alpha$ en $f_0$.}
 \end{subfigure}
 
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f1}
+\caption{Historial de optimización en $f_1$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f1}
+\caption{Efecto de $\alpha$ en $f_1$.}
 \end{subfigure}
 
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f2}
+\caption{Historial de optimización en $f_2$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.40\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f2}
+\caption{Efecto de $\alpha$ en $f_2$.}
 \end{subfigure}
 \caption{Proceso de calibración de GD con Optuna para $f_0$, $f_1$ y $f_2$
 (de arriba hacia abajo): historial de optimización (izquierda) y efecto de
 $\alpha$ con el mejor ensayo marcado (derecha).}
 \label{fig:gd_optuna}
+\end{figure}
+
+Como evidencia de los mejores valores (punto 2a), se repitieron las 6
+corridas de ajuste de cada función con el $\alpha$ de la
+Tabla~\ref{tab:gd_optuna} (Figura~\ref{fig:gd_curvas_calibracion}). Cada
+curva es el valor de $f$ en cada iteración desde uno de los puntos de
+ajuste y la curva negra es su promedio, cuyo último valor coincide con el
+objetivo de Optuna: $2.21\times10^{-72}$, $6.271274$ y $15.046441$. En
+$f_0$ las seis corridas alcanzan la tolerancia en dos pasos. En $f_1$ bajan
+de forma irregular, porque los pasos largos hacen que GD salte entre
+cuencas de Ackley. En $f_2$ el valor cae varios órdenes de magnitud en los
+primeros pasos: dos corridas alcanzan la tolerancia y tres terminan justo
+por encima de ella ($f$ entre $0.001$ y $0.004$), pero la sexta pasa a
+$0.025$ unidades del punto silla $(-3.073026,\ -0.081353)$, avanza muy
+lentamente desde allí y termina con $f=90.27$, lo que eleva el promedio a
+$15.05$.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-gd-con-los-mejores-hiperparametros-sobre-f0}
+\caption{$f_0$, $\alpha=0.483072$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-gd-con-los-mejores-hiperparametros-sobre-f1}
+\caption{$f_1$, $\alpha=0.208347$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-gd-con-los-mejores-hiperparametros-sobre-f2}
+\caption{$f_2$, $\alpha=0.005492$.}
+\end{subfigure}
+\caption{Curvas de aprendizaje de GD con los mejores hiperparámetros
+sobre los 6 puntos de ajuste, para $f_0$, $f_1$ y $f_2$.}
+\label{fig:gd_curvas_calibracion}
 \end{figure}
 
 \subsection{Evaluación con los mejores hiperparámetros}
@@ -166,7 +217,7 @@ Tabla~\ref{tab:resumen_eval}:
 \begin{itemize}
     \item $f_0$: 10/10 corridas convergen, todas en 2 iteraciones; promedio
     de $f$ minimizada $8.20\times10^{-5}$.
-    \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $5.9661$.
+    \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $6.1345$.
     \item $f_2$: 9/10 corridas convergen con $23.78$ iteraciones en
     promedio; promedio de $f$ minimizada $0.6781$. La corrida que no
     converge (corrida 5) quedó detenida cerca de un punto silla
@@ -182,38 +233,46 @@ primera convergencia.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f0}
+\caption{Trayectoria en $f_0$ (corrida 5).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f1}
+\caption{Trayectoria en $f_1$ (corrida 6).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f2}
+\caption{Trayectoria en $f_2$ (corrida 3).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 \caption{Mejores corridas de GD. $f_0$: corrida 5, converge en 2
-iteraciones ($f=2.61\times10^{-5}$). $f_1$: corrida 4, no converge
-($f=3.234777$ al final). $f_2$: corrida 3, converge en 14 iteraciones
+iteraciones ($f=2.61\times10^{-5}$). $f_1$: corrida 6, no converge
+($f=0.577702$ al final). $f_2$: corrida 3, converge en 14 iteraciones
 ($f=4.33\times10^{-4}$).}
 \label{fig:gd_mejores}
 \end{figure}
 
-En $f_1$ la trayectoria de la corrida 4 sale temporalmente del dominio
+En $f_1$ la trayectoria de la corrida 6 sale temporalmente del dominio
 (el borde punteado marca $[-10,10]^2$) y su curva de aprendizaje no es
-monótona: con $\alpha=0.297839$ los pasos son largos respecto al periodo
+monótona: con $\alpha=0.208347$ los pasos son largos respecto al periodo
 de Ackley, por lo que GD salta entre cuencas y se acerca al origen sin
-llegar a asentarse en él.
+llegar a asentarse en él. Termina con $f=0.577702$, por debajo del mínimo
+local más bajo de Ackley ($\approx2.5799$), es decir, en la cuenca del
+mínimo global; es la única de las 10 corridas de GD que termina en ella.

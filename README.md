@@ -4,8 +4,12 @@ Repositorio del Trabajo Práctico 1 del curso de Principios de Inteligencia
 Artificial. La implementación se mantiene completamente dentro de un único
 notebook de Jupyter.
 
-Este repositorio contiene únicamente la estructura inicial del proyecto. No
-incluye implementaciones, resultados ni respuestas al enunciado.
+Este repositorio contiene la implementación completa en PyTorch del
+descenso del gradiente, RMSProp y el enjambre de partículas, su calibración
+con Optuna y la evaluación sobre las tres funciones del enunciado. El
+notebook se apoya en `notebooks/utils.py` y, al ejecutarse, exporta sus
+figuras a `results/figures/`, que el informe LaTeX de `docs/report/` usa
+para responder el enunciado.
 
 ## Entregables
 

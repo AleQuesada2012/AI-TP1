@@ -6,7 +6,7 @@ Las tres funciones se evaluaron sobre una malla regular de $401\times401$
 puntos en $[-10,10]^2$, construida con \texttt{torch.meshgrid}. Para cada
 una se generaron curvas de nivel (\texttt{contourf}) y una superficie 3D
 mediante la función auxiliar \texttt{plot\_function\_2d\_3d} de
-\texttt{utils.py}. En las curvas de nivel el color representa
+\texttt{utils.py} (Figura~\ref{fig:funciones}). En las curvas de nivel el color representa
 $\log(1+f-f_{\min})$ únicamente para que los valles sean visibles.
 
 \begin{align}
@@ -18,9 +18,20 @@ f_2(x,y) &= (x^2+y-11)^2+(x+y^2-7)^2.
 
 \begin{figure}[H]
 \centering
+\begin{subfigure}{0.85\linewidth}
 \includegraphics[width=\linewidth]{f0-x-y-x-2-y-2}
+\caption{$f_0(x,y)=x^2+y^2$.}
+\end{subfigure}
+
+\begin{subfigure}{0.85\linewidth}
 \includegraphics[width=\linewidth]{f1-x-y-funcion-de-ackley}
+\caption{$f_1$ (Ackley).}
+\end{subfigure}
+
+\begin{subfigure}{0.85\linewidth}
 \includegraphics[width=\linewidth]{f2-x-y-funcion-de-himmelblau}
+\caption{$f_2$ (Himmelblau).}
+\end{subfigure}
 \caption{Curvas de nivel (\texttt{contourf} sobre la malla de
 \texttt{torch.meshgrid}) y superficies 3D de $f_0$, $f_1$ y $f_2$ en
 $[-10,10]^2$.}
@@ -150,10 +161,10 @@ coinciden con esta forma cerrada.
 \subsection{Búsqueda de puntos críticos con PyTorch}
 
 Los mínimos observados sobre la malla discreta (\texttt{torch.argmin}) son
-solo aproximaciones limitadas por su resolución: para $f_0$ el mínimo
-muestreado se ubicó en $(0,0)$ con valor $4.441\times10^{-14}$, para $f_1$
-en $(0,0)$ con valor $0$, y para $f_2$ en $(3,2)$ con valor
-$2.274\times10^{-13}$. Como \texttt{torch.argmin} devuelve un solo índice,
+solo aproximaciones limitadas por su resolución. En este caso los tres
+mínimos coinciden con nodos de la malla: para $f_0$ y $f_1$ el mínimo
+muestreado se ubicó en $(0,0)$ y para $f_2$ en $(3,2)$, los tres con
+valor $0$. Como \texttt{torch.argmin} devuelve un solo índice,
 la malla muestra solo uno de los cuatro mínimos de $f_2$.
 
 Para refinar esas aproximaciones se calculó el gradiente y la Hessiana
@@ -222,7 +233,8 @@ todos los puntos suaves tienen $\lVert\nabla f\rVert<10^{-6}$, que los
 puntos silla tienen $\det H<0$ y los mínimos $\det H>0$, que los mínimos
 globales de $f_0$, $f_1$ y $f_2$ tienen valor menor que $10^{-8}$, y los
 conteos de 8 mínimos locales centrales, 440 mínimos locales en el dominio y
-4 puntos silla para $f_1$ y $f_2$.
+4 puntos silla para $f_1$ y $f_2$. La Figura~\ref{fig:puntos_criticos}
+muestra estos puntos en vistas cercanas.
 
 \begin{figure}[H]
 \centering

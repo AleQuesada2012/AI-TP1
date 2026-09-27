@@ -52,26 +52,32 @@ $f^*+10^{-3}$.
 \centering
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{evolucion-de-f0-x-y-en-cada-particula-pso-particulas-1-5}
+\caption{Evolución por partícula en $f_0$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{evolucion-de-f1-x-y-en-cada-particula-pso-particulas-1-5}
+\caption{Evolución por partícula en $f_1$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.32\linewidth}
 \includegraphics[width=\linewidth]{evolucion-de-f2-x-y-en-cada-particula-pso-particulas-1-5}
+\caption{Evolución por partícula en $f_2$.}
 \end{subfigure}
 \caption{Demostración de PSO ($c_1=c_2=0.5$, 5 partículas) sobre $f_0$,
 $f_1$ y $f_2$ (de izquierda a derecha): curva de aprendizaje del mejor
@@ -108,32 +114,39 @@ ensayos, 25 iteraciones, 6 puntos de ajuste).}
 
 En las tres funciones Optuna prefirió $c_2$ pequeño y $c_1$ mayor, es decir,
 dar más peso a la memoria de cada partícula que a la atracción hacia el
-mejor global, y una cantidad de partículas cercana al máximo del rango.
+mejor global, y una cantidad de partículas cercana al máximo del rango
+(Figura~\ref{fig:pso_optuna}).
 
 \begin{figure}[H]
 \centering
 \begin{subfigure}{0.30\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f0}
+\caption{Historial de optimización en $f_0$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.68\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f0}
+\caption{Efecto de $c_1$, $c_2$ y $n$ en $f_0$.}
 \end{subfigure}
 
 \begin{subfigure}{0.30\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f1}
+\caption{Historial de optimización en $f_1$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.68\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f1}
+\caption{Efecto de $c_1$, $c_2$ y $n$ en $f_1$.}
 \end{subfigure}
 
 \begin{subfigure}{0.30\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f2}
+\caption{Historial de optimización en $f_2$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.68\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f2}
+\caption{Efecto de $c_1$, $c_2$ y $n$ en $f_2$.}
 \end{subfigure}
 \caption{Proceso de calibración de PSO con Optuna para $f_0$, $f_1$ y $f_2$
 (de arriba hacia abajo): historial de optimización (izquierda) y efecto de
@@ -151,9 +164,20 @@ $0.081342$.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f0}
-\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f1}
-\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f2}
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f0}
+\caption{$f_0$, $c_1=1.444168$, $c_2=0.173357$, $n=43$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f1}
+\caption{$f_1$, $c_1=1.073939$, $c_2=0.214430$, $n=42$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f2}
+\caption{$f_2$, $c_1=0.443200$, $c_2=0.080573$, $n=45$.}
+\end{subfigure}
 \caption{Curvas de aprendizaje de PSO con los mejores hiperparámetros sobre
 los 6 puntos de ajuste, para $f_0$, $f_1$ y $f_2$.}
 \label{fig:pso_curvas_calibracion}
@@ -193,32 +217,38 @@ efecto.
 Igual que en GD y RMSProp, la gráfica de curvas de nivel muestra una sola
 trayectoria: la de la partícula que llegó al valor más cercano a 0, desde
 su posición inicial hasta ese punto. La curva de aprendizaje corresponde al
-mejor valor global.
+mejor valor global (Figura~\ref{fig:pso_mejores}).
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f0-particula-27}
+\caption{Trayectoria en $f_0$ (corrida 1, partícula 27).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f1-particula-3}
+\caption{Trayectoria en $f_1$ (corrida 2, partícula 3).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f2-particula-26}
+\caption{Trayectoria en $f_2$ (corrida 8, partícula 26).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 \caption{Mejores corridas de PSO. $f_0$: corrida 1, converge en 32
 iteraciones ($f=3.58\times10^{-4}$, partícula 27 de 43). $f_1$: corrida 2,
@@ -230,8 +260,15 @@ partícula 26 de 45 en la iteración 34).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{evaluacion-evolucion-de-f-en-cada-particula-de-pso-sobre-f2-particulas-1-10}
-\includegraphics[width=0.85\linewidth]{evaluacion-particula-mas-cercana-al-minimo-de-pso-sobre-f2-particula-26}
+\begin{subfigure}{0.85\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-evolucion-de-f-en-cada-particula-de-pso-sobre-f2-particulas-1-10}
+\caption{Partículas 1 a 10.}
+\end{subfigure}
+
+\begin{subfigure}{0.85\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-particula-mas-cercana-al-minimo-de-pso-sobre-f2-particula-26}
+\caption{Partícula 26.}
+\end{subfigure}
 \caption{Mejor corrida de PSO sobre $f_2$: evolución de $f$ en las
 partículas 1 a 10 (arriba) y en la partícula 26, que alcanzó el valor más
 cercano al mínimo (abajo). Las gráficas del resto de partículas y de $f_0$
@@ -240,45 +277,68 @@ y $f_1$ están en \texttt{results/figures/} con el prefijo
 \label{fig:pso_particulas_f2}
 \end{figure}
 
-\subsection{Descenso del gradiente combinado con simulated annealing}
+\subsection{Descenso del gradiente combinado con enjambre de partículas}
+\label{sec:gd_pso}
 
-\emph{Simulated annealing} (SA) \cite{kirkpatrick1983optimization} propone
-un movimiento aleatorio $x'$ y lo acepta siempre si $f(x')\leq f(x)$, o con
-probabilidad $\exp[-(f(x')-f(x))/T_k]$ si empeora, donde la temperatura
-$T_k$ disminuye con las iteraciones. Aceptar algunos empeoramientos le
-permite salir de mínimos locales, pero sus propuestas no usan información
-local y convergen lentamente.
+\emph{Pregunta 3d: ¿cómo podría mezclarse el algoritmo del descenso del
+gradiente con el algoritmo de enjambre de partículas? ¿Qué beneficios
+tendría hacerlo?}
 
-Una forma de combinarlo con GD es usar el paso de gradiente como propuesta
-y agregarle ruido controlado por la temperatura:
-\[
-x' = x_t - \alpha\nabla f(x_t) + \sqrt{2\alpha T_k}\,\xi_t,
-\qquad \xi_t\sim\mathcal{N}(0,I),
-\]
-y después aceptar o rechazar $x'$ con el criterio de Metropolis. Con
-$T_k\to0$ el ruido desaparece y el método se reduce a GD. Esta idea está
-emparentada con la dinámica de Langevin, para la cual se ha demostrado
-convergencia al mínimo global bajo un enfriamiento suficientemente lento
-\cite{gelfand1991recursive}, y con las variantes de GD perturbado que
-escapan de puntos silla de forma eficiente \cite{jin2017escape}. Otra
-variante es alternar: ejecutar GD hasta estancarse y, entonces, dar un salto
-de SA desde el punto alcanzado.
+Los resultados de este trabajo muestran que los dos métodos son
+complementarios. PSO explora el dominio con varias partículas y sin usar
+gradientes: en $f_1$ llegó a la cuenca del mínimo global en las 10 corridas,
+pero, sin peso de inercia, sus partículas siguen oscilando y no refinó la
+solución hasta $10^{-3}$ ni en $f_1$ ni en $f_2$
+(Sección~\ref{sec:evaluacion}). GD, en cambio, refina con rapidez cuando
+parte de la cuenca adecuada (converge en 2 iteraciones en $f_0$ y en 9 de
+10 corridas de $f_2$), pero depende del punto inicial: en $f_1$ solo 1 de
+sus 10 corridas terminó en la cuenca del mínimo global.
+
+Hay varias formas de combinarlos:
+\begin{itemize}
+    \item \textbf{En dos fases.} Ejecutar PSO unas pocas iteraciones para
+    ubicar una región prometedora y, desde el mejor global $g$, continuar con
+    GD. PSO elige la cuenca y GD la refina.
+    \item \textbf{Refinamiento del mejor global en cada iteración.} Después
+    de actualizar el enjambre, aplicar uno o varios pasos de GD al mejor
+    global (o a los mejores personales) y conservar el resultado si mejora.
+    Es la idea del PSO basado en gradiente de \cite{noel2012gradient}, que
+    usa el enjambre para la búsqueda global y el descenso del gradiente para
+    la búsqueda local precisa.
+    \item \textbf{Gradiente dentro de la velocidad.} Agregar un término de
+    descenso a la actualización de cada partícula,
+    \[
+    v_i \leftarrow v_i + c_1 r_1\odot(p_i-x_i) + c_2 r_2\odot(g-x_i)
+    - \eta\,\nabla f(x_i),
+    \]
+    de modo que cada partícula combine la atracción del enjambre con la
+    pendiente local de $f$.
+\end{itemize}
 
 Beneficios esperados:
 \begin{itemize}
-    \item \textbf{Escape de mínimos locales.} En Ackley, ni GD ni RMSProp
-    convergieron en ninguna de las 10 corridas (Tabla~\ref{tab:eval_f1}), y
-    RMSProp quedó en mínimos locales; con temperatura alta, el ruido
-    permitiría saltar las barreras entre cuencas y, al enfriar, asentarse en
-    una cuenca de menor valor.
-    \item \textbf{Escape de puntos silla.} La perturbación rompe la simetría
-    cerca de una silla, donde el gradiente es casi nulo, como en la
-    corrida 5 sobre $f_2$ (Tabla~\ref{tab:silla}).
-    \item \textbf{Precisión final.} Al enfriar, el término de gradiente
-    domina y el método refina la solución con la rapidez de GD, algo que
-    SA puro o PSO sin inercia no logran en 50 iteraciones.
+    \item \textbf{Exploración global con precisión local.} El enjambre
+    reduce la dependencia del punto inicial que tiene GD en funciones
+    multimodales como Ackley \cite{kennedy1995particle}, y GD aporta la
+    convergencia rápida cerca de un mínimo \cite{nocedal2006numerical} que
+    PSO sin inercia no logra. En $f_2$, el mejor global de PSO terminó
+    siempre con $f\leq0.2124$, por debajo del punto silla de menor valor
+    ($13.3119$, Tabla~\ref{tab:criticos_f2}); por tanto, cada mejor global
+    está en la cuenca de uno de los cuatro mínimos, donde GD con un paso
+    adecuado converge a él.
+    \item \textbf{Menos iteraciones del enjambre.} Si GD se encarga del
+    refinamiento, PSO no necesita esperar a que las partículas se contraigan,
+    lo que ahorra iteraciones que en la evaluación costaron entre 42 y 45
+    evaluaciones de $f$ cada una.
+    \item \textbf{Robustez ante puntos silla.} Las partículas no se detienen
+    en regiones de gradiente pequeño, así que el enjambre puede sacar a GD
+    de una meseta como la de la corrida 5 sobre $f_2$
+    (Tabla~\ref{tab:silla}).
 \end{itemize}
-El costo es un hiperparámetro adicional, el calendario de enfriamiento, y
-evaluaciones extra de $f$ para el criterio de aceptación. Esta combinación
-no se implementó en el notebook; los beneficios anteriores son
-expectativas basadas en la literatura, no resultados medidos.
+El costo es calcular gradientes, lo que exige que $f$ sea diferenciable (el
+mínimo global de Ackley no lo es, así que cerca del origen GD necesita un
+paso pequeño o decreciente para no oscilar), y agregar hiperparámetros, como
+el paso $\eta$ o el momento en que se cambia de fase. Esta combinación no se
+implementó en el notebook; los beneficios anteriores son expectativas
+basadas en los resultados obtenidos y en la literatura, no resultados
+medidos.

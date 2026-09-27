@@ -2,7 +2,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage[spanish,es-nodecimaldot,es-tabla]{babel}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{booktabs}
@@ -10,6 +10,9 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
+% Las subfiguras también se listan en el índice de figuras.
+\captionsetup[subfigure]{list=true}
+\setcounter{lofdepth}{2}
 \usepackage[hidelinks]{hyperref}
 \usepackage[margin=1in]{geometry}
 
@@ -23,6 +26,8 @@
 
 \maketitle
 \tableofcontents
+\newpage
+\listoffigures
 \newpage
 
 \input{sections/00-introduction}

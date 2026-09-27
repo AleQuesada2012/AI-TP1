@@ -45,32 +45,39 @@ RMSProp llega cerca del mismo mínimo que GD, $(-3.779310,\ -3.283186)$, con
 $\alpha=0.4$, un paso 200 veces mayor que el de GD, sin divergir: al
 dividir entre $\sqrt{s_t}$, la magnitud de cada componente del paso queda
 acotada aproximadamente por $\alpha/\sqrt{1-\gamma}$ aunque el gradiente
-sea del orden de miles.
+sea del orden de miles. La Figura~\ref{fig:rms_demo} muestra estas
+corridas.
 
 \begin{figure}[H]
 \centering
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f0}
+\caption{Trayectoria en $f_0$.}
 \end{subfigure}
 
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f1}
+\caption{Trayectoria en $f_1$.}
 \end{subfigure}
 
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 \hfill
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f2}
+\caption{Trayectoria en $f_2$.}
 \end{subfigure}
 \caption{Curvas de aprendizaje y trayectorias de la demostración de
 RMSProp (Tabla~\ref{tab:rms_demo}).}
@@ -93,7 +100,7 @@ de RMSProp se podó.
 Función & Mejor $\alpha$ & Mejor $\gamma$ & Convergencias & Iter.\ promedio & Promedio $f$ final \\
 \midrule
 $f_0$ & $0.629157$ & $0.992523$ & 6/6 & $5.00$  & $8.31\times10^{-19}$ \\
-$f_1$ & $0.018006$ & $0.998647$ & 0/6 & ---     & $13.035990$ \\
+$f_1$ & $0.018006$ & $0.998647$ & 0/6 & ---     & $13.035986$ \\
 $f_2$ & $0.341559$ & $0.611311$ & 2/6 & $11.50$ & $2.656585$ \\
 \bottomrule
 \end{tabular}
@@ -105,37 +112,77 @@ ensayos, 25 iteraciones, 6 puntos de ajuste).}
 En $f_1$, Optuna eligió un paso pequeño y $\gamma$ cercano a 1: con esa
 configuración RMSProp desciende de forma estable hasta el mínimo local más
 cercano. Ninguna combinación probada alcanzó la tolerancia en Ackley, y el
-promedio obtenido ($13.04$) es peor que el de GD ($5.89$).
+promedio obtenido ($13.04$) es peor que el de GD ($6.27$). La
+Figura~\ref{fig:rms_optuna} muestra el proceso de calibración.
 
 \begin{figure}[H]
 \centering
 \begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f0}
+\caption{Historial de optimización en $f_0$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.62\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f0}
+\caption{Efecto de $\alpha$ y $\gamma$ en $f_0$.}
 \end{subfigure}
 
 \begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f1}
+\caption{Historial de optimización en $f_1$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.62\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f1}
+\caption{Efecto de $\alpha$ y $\gamma$ en $f_1$.}
 \end{subfigure}
 
 \begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f2}
+\caption{Historial de optimización en $f_2$.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.62\linewidth}
 \includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f2}
+\caption{Efecto de $\alpha$ y $\gamma$ en $f_2$.}
 \end{subfigure}
 \caption{Proceso de calibración de RMSProp con Optuna para $f_0$, $f_1$ y
 $f_2$ (de arriba hacia abajo): historial de optimización (izquierda) y
 efecto de $\alpha$ y $\gamma$ con el mejor ensayo marcado (derecha).}
 \label{fig:rms_optuna}
+\end{figure}
+
+Como evidencia de los mejores valores (punto 2a), se repitieron las 6
+corridas de ajuste con los valores de la Tabla~\ref{tab:rms_optuna}
+(Figura~\ref{fig:rms_curvas_calibracion}). La curva negra es el promedio,
+cuyo último valor coincide con el objetivo de Optuna:
+$8.31\times10^{-19}$, $13.035986$ y $2.656585$. En $f_0$ las seis corridas
+convergen, en 5 iteraciones en promedio. En $f_1$ cada corrida desciende de
+forma estable hasta un mínimo local cercano a su inicio, con valores entre
+$10$ y $16$. En $f_2$ el paso acotado hace que el descenso sea más gradual
+que en GD; todas las corridas terminan con $f$ entre $1.2$ y $4.7$,
+incluidas las dos que alcanzaron la tolerancia (en las iteraciones 11 y 12)
+y después se alejaron del mínimo por las oscilaciones del paso normalizado.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-rmsprop-con-los-mejores-hiperparametros-sobre-f0}
+\caption{$f_0$, $\alpha=0.629157$, $\gamma=0.992523$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-rmsprop-con-los-mejores-hiperparametros-sobre-f1}
+\caption{$f_1$, $\alpha=0.018006$, $\gamma=0.998647$.}
+\end{subfigure}
+
+\begin{subfigure}{0.70\linewidth}
+\includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-rmsprop-con-los-mejores-hiperparametros-sobre-f2}
+\caption{$f_2$, $\alpha=0.341559$, $\gamma=0.611311$.}
+\end{subfigure}
+\caption{Curvas de aprendizaje de RMSProp con los mejores
+hiperparámetros sobre los 6 puntos de ajuste, para $f_0$, $f_1$ y $f_2$.}
+\label{fig:rms_curvas_calibracion}
 \end{figure}
 
 \subsection{Evaluación con los mejores hiperparámetros}
@@ -166,28 +213,34 @@ $f=0.0170$ en $t=10$ y después vuelve a valores cercanos a $2.25$.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f0}
+\caption{Trayectoria en $f_0$ (corrida 7).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f0}
+\caption{Curva de aprendizaje en $f_0$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f1}
+\caption{Trayectoria en $f_1$ (corrida 5).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f1}
+\caption{Curva de aprendizaje en $f_1$.}
 \end{subfigure}
 
-\begin{subfigure}{0.40\linewidth}
+\begin{subfigure}{0.36\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f2}
+\caption{Trayectoria en $f_2$ (corrida 5).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
 \includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f2}
+\caption{Curva de aprendizaje en $f_2$.}
 \end{subfigure}
 \caption{Mejores corridas de RMSProp. $f_0$: corrida 7, converge en 2
 iteraciones ($f=4.43\times10^{-5}$). $f_1$: corrida 5, no converge y queda

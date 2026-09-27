@@ -14,8 +14,9 @@
     rápido cuando convergió; la corrida 5 mostró a GD detenido cerca de un
     punto silla que RMSProp evitó.
     \item En Ackley ningún método alcanzó la tolerancia. Los métodos basados
-    en gradiente quedan atrapados en, o saltan entre, mínimos locales,
-    mientras que PSO llegó a la cuenca del mínimo global en las 10 corridas
+    en gradiente quedan atrapados en, o saltan entre, mínimos locales (GD
+    terminó en la cuenca del mínimo global en 1 de 10 corridas),
+    mientras que PSO llegó a esa cuenca en las 10 corridas
     pero sin refinar la solución hasta $10^{-3}$.
     \item La calibración con Optuna dependió fuertemente de la función: el
     mejor $\alpha$ de GD varía casi dos órdenes de magnitud entre $f_0$ y
@@ -23,6 +24,7 @@
 \end{itemize}
 
 \subsection{Limitaciones}
+\label{sec:limitaciones}
 
 \begin{itemize}
     \item $f_1$ no es diferenciable en el origen, por lo que la prueba de la
@@ -40,8 +42,14 @@
     RMSProp en el punto actual.
     \item El análisis de puntos silla de la Sección~\ref{sec:silla} se basa
     en una sola corrida, no en un experimento controlado.
-    \item La combinación de GD con \emph{simulated annealing} se discute de
-    forma teórica y no se implementó.
+    \item La combinación de GD con PSO se discute de forma teórica y no se
+    implementó.
+    \item La calibración de GD sobre $f_1$ depende del entorno de ejecución:
+    con pasos largos, GD es caótico en Ackley y diferencias numéricas
+    mínimas entre versiones de las bibliotecas cambian el recorrido de
+    Optuna. En una ejecución anterior, en otro entorno, el mismo notebook
+    eligió $\alpha=0.297839$ en lugar de $0.208347$; las demás calibraciones
+    coincidieron.
 \end{itemize}
 
 \subsection{Trabajo futuro}
@@ -51,8 +59,8 @@
     a PSO para amortiguar las oscilaciones y mejorar la precisión final.
     \item Reducir $\alpha$ con el tiempo en RMSProp para evitar las
     oscilaciones alrededor de los mínimos de $f_2$.
-    \item Implementar y evaluar la combinación de GD con \emph{simulated
-    annealing} sobre Ackley, con los mismos 10 puntos iniciales.
+    \item Implementar y evaluar la combinación de GD con PSO sobre Ackley
+    y Himmelblau, con los mismos 10 puntos iniciales.
     \item Diseñar un experimento controlado de puntos silla, iniciando GD y
     RMSProp en vecindades de los cuatro puntos silla de $f_2$.
 \end{itemize}
