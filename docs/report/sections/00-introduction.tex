@@ -3,33 +3,49 @@
 Este informe documenta el Trabajo práctico 1 del curso de Principios de
 Inteligencia Artificial, cuyo enunciado se encuentra en
 \texttt{docs/assignment/TP\_1\_Optimizacion-1.pdf}. El trabajo consiste en
-implementar en PyTorch distintos algoritmos de optimización y compararlos
-sobre tres funciones de prueba:
+implementar en PyTorch \cite{paszke2019pytorch} tres algoritmos de
+optimización (descenso del gradiente, RMSProp y enjambre de partículas) y
+compararlos sobre tres funciones de prueba:
 
 \begin{align*}
 f_0(x,y) &= x^2+y^2, \\
-f_1(x,y) &= \text{función de Ackley}, \\
-f_2(x,y) &= \text{función de Himmelblau},
+f_1(x,y) &= \text{función de Ackley \cite{ackley1987connectionist}}, \\
+f_2(x,y) &= \text{función de Himmelblau \cite{himmelblau1972applied}},
 \end{align*}
 
-definidas sobre el dominio $x,y\in[-10,10]$. Salvo que se indique lo
-contrario, cada algoritmo se ejecuta por $P=25$ iteraciones a partir de
-puntos iniciales muestreados uniformemente dentro de ese dominio.
-
-Para cada método (descenso del gradiente, RMSProp y enjambre de partículas)
-el enunciado exige documentar su formulación, el proceso de calibración de
-hiperparámetros y al menos dos pruebas unitarias. Este documento sigue esa
-estructura, sección por sección.
+definidas sobre el dominio $x,y\in[-10,10]$. Las demostraciones iniciales y
+la calibración de hiperparámetros usan $P=25$ iteraciones; la evaluación
+final usa un máximo de 50 iteraciones, como pide el enunciado. Todos los
+puntos iniciales se muestrean uniformemente en $[-10,10]^2$.
 
 La implementación completa vive en el notebook autocontenido
-\texttt{notebooks/tp1\_optimizacion.ipynb}; este informe resume y explica
-esa implementación sin duplicar el código fuente.
+\texttt{notebooks/tp1\_optimizacion.ipynb}, apoyado por el módulo
+\texttt{notebooks/utils.py} con las funciones de análisis, visualización y
+presentación de tablas. Todos los números, tablas y figuras de este informe
+provienen de una ejecución completa del notebook desde un kernel limpio, y
+las figuras se exportan automáticamente a \texttt{results/figures/}.
 
-% TODO: Resumir aquí el criterio de convergencia usado en las tablas
-% comparativas, ya definido en la sección "Objetivo y protocolo" del
-% notebook: una corrida converge en la primera iteración con
-% |f(x_t) - f*| <= 1e-3 (en PSO se usa el valor del mejor global).
-% TODO: Mencionar el estado de cada algoritmo: descenso del gradiente,
-% RMSProp y PSO ya están implementados, calibrados con Optuna y evaluados
-% con el protocolo de 10 corridas; faltan las pruebas unitarias de descenso
-% del gradiente y las preguntas conceptuales.
+\subsection{Protocolo común}
+
+\begin{itemize}
+    \item \textbf{Criterio de convergencia.} Una corrida converge en la
+    primera iteración $t$ que cumple $|f(x_t)-f^*|\leq10^{-3}$, con
+    $f^*=0$ en las tres funciones. En PSO se evalúa el mejor valor global
+    del enjambre en cada iteración. La iteración $t=0$ corresponde al punto
+    inicial.
+    \item \textbf{Calibración.} Se usa Optuna \cite{akiba2019optuna} con el
+    muestreador TPE, 25 ensayos por estudio, 25 iteraciones fijas por
+    corrida y los mismos 6 puntos iniciales para todos los estudios
+    (generados con \texttt{random.Random(42)}). El objetivo que se minimiza
+    es el promedio de $f$ al final de las 6 corridas, sin penalizaciones.
+    Un ensayo que diverge se poda (\texttt{TrialPruned}).
+    \item \textbf{Evaluación.} Con los mejores hiperparámetros se ejecutan
+    10 corridas de 50 iteraciones desde los mismos 10 puntos iniciales
+    (generados con \texttt{random.Random(20260920)}) para los tres
+    algoritmos. En PSO, cada punto es la posición inicial de la primera
+    partícula.
+    \item \textbf{Reproducibilidad.} Las demostraciones usan puntos generados
+    con \texttt{random.Random(2026)} y las partes estocásticas de PSO usan
+    \texttt{torch.manual\_seed}, por lo que una nueva ejecución del notebook
+    reproduce exactamente los resultados aquí reportados.
+\end{itemize}

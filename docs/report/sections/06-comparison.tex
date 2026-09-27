@@ -1,16 +1,200 @@
 \section{Comparación de resultados}
 \label{sec:comparacion}
 
-% TODO: Los tres métodos ya tienen el protocolo de 10 corridas sobre los
-% mismos puntos iniciales (puntos 2 y 3). Usar las tablas "Resumen de
-% convergencia y valores minimizados" y "Comparación de las 10 corridas por
-% función" del notebook.
-% TODO: Comparar cantidad de iteraciones para converger, valor final
-% promedio y robustez ante puntos silla y mínimos locales, usando las
-% tablas de las Secciones 2 a 4.
-% TODO: Responder por qué RMSProp evita mejor los puntos silla que el
-% descenso del gradiente.
-% TODO: Responder cómo se podría combinar el descenso del gradiente con
-% simulated annealing y qué beneficios tendría hacerlo.
-% TODO: Argumentar ventajas y desventajas de cada algoritmo citando
-% fuentes externas, agregadas a docs/report/references.bib.
+\subsection{Evaluación con los mejores hiperparámetros}
+\label{sec:evaluacion}
+
+Los 10 puntos iniciales, generados con \texttt{random.Random(20260920)} y
+distintos de los 6 puntos de ajuste, son los mismos para los tres
+algoritmos y las tres funciones. Cada corrida usa los mejores
+hiperparámetros de las Tablas~\ref{tab:gd_optuna}, \ref{tab:rms_optuna} y
+\ref{tab:pso_optuna} y un máximo de 50 iteraciones. En las tablas
+siguientes, ``Iter.'' es la primera iteración que cumple
+$|f(x_t)-f^*|\leq10^{-3}$, o ``No'' si la corrida no convergió, y ``$f$''
+es el valor en esa iteración o, si no convergió, al terminar las 50
+iteraciones. Ninguna corrida divergió.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{rlrrrrrr}
+\toprule
+ & & \multicolumn{2}{c}{GD} & \multicolumn{2}{c}{RMSProp} & \multicolumn{2}{c}{PSO} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Corrida & Punto inicial & Iter. & $f$ & Iter. & $f$ & Iter. & $f$ \\
+\midrule
+1 & $(1.7280,\ 4.1962)$ & 2 & 2.71e-05 & 6 & 5.69e-04 & 32 & 3.58e-04 \\
+2 & $(-7.4455,\ 8.0190)$ & 2 & 1.57e-04 & 3 & 3.86e-05 & 37 & 3.78e-04 \\
+3 & $(-1.8004,\ -5.1750)$ & 2 & 3.94e-05 & 5 & 6.80e-04 & 34 & 9.40e-04 \\
+4 & $(-1.2368,\ -9.5770)$ & 2 & 1.23e-04 & 5 & 1.26e-04 & No & 0.0028 \\
+5 & $(4.4551,\ 0.2191)$ & 2 & 2.61e-05 & 6 & 3.67e-04 & No & 0.0021 \\
+6 & $(-0.5907,\ 9.2344)$ & 2 & 1.13e-04 & 4 & 5.04e-04 & No & 0.0014 \\
+7 & $(7.3363,\ -7.5118)$ & 2 & 1.45e-04 & 2 & 4.43e-05 & No & 0.0052 \\
+8 & $(-6.2477,\ -1.4124)$ & 2 & 5.39e-05 & 5 & 7.20e-05 & 49 & 4.84e-04 \\
+9 & $(-6.2994,\ -0.1350)$ & 2 & 5.22e-05 & 3 & 4.63e-04 & No & 0.0026 \\
+10 & $(-0.4445,\ 7.9754)$ & 2 & 8.38e-05 & 3 & 8.03e-04 & No & 0.0013 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de las 10 corridas sobre $f_0$.}
+\label{tab:eval_f0}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{rlrrrrrr}
+\toprule
+ & & \multicolumn{2}{c}{GD} & \multicolumn{2}{c}{RMSProp} & \multicolumn{2}{c}{PSO} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Corrida & Punto inicial & Iter. & $f$ & Iter. & $f$ & Iter. & $f$ \\
+\midrule
+1 & $(1.7280,\ 4.1962)$ & No & 5.8658 & No & 9.3533 & No & 0.3863 \\
+2 & $(-7.4455,\ 8.0190)$ & No & 5.9946 & No & 15.5491 & No & 0.0199 \\
+3 & $(-1.8004,\ -5.1750)$ & No & 6.1207 & No & 10.6451 & No & 0.0925 \\
+4 & $(-1.2368,\ -9.5770)$ & No & 3.2348 & No & 15.1676 & No & 0.0625 \\
+5 & $(4.4551,\ 0.2191)$ & No & 6.2877 & No & 8.6165 & No & 0.4717 \\
+6 & $(-0.5907,\ 9.2344)$ & No & 8.9016 & No & 14.4371 & No & 0.1134 \\
+7 & $(7.3363,\ -7.5118)$ & No & 8.4678 & No & 15.0637 & No & 0.0620 \\
+8 & $(-6.2477,\ -1.4124)$ & No & 4.3977 & No & 11.5254 & No & 0.1122 \\
+9 & $(-6.2994,\ -0.1350)$ & No & 3.5477 & No & 11.4256 & No & 0.1062 \\
+10 & $(-0.4445,\ 7.9754)$ & No & 6.8421 & No & 12.5578 & No & 0.0701 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de las 10 corridas sobre $f_1$ (Ackley).}
+\label{tab:eval_f1}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{rlrrrrrr}
+\toprule
+ & & \multicolumn{2}{c}{GD} & \multicolumn{2}{c}{RMSProp} & \multicolumn{2}{c}{PSO} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Corrida & Punto inicial & Iter. & $f$ & Iter. & $f$ & Iter. & $f$ \\
+\midrule
+1 & $(1.7280,\ 4.1962)$ & 33 & 8.51e-04 & No & 1.9068 & No & 0.0097 \\
+2 & $(-7.4455,\ 8.0190)$ & 37 & 7.48e-04 & 24 & 6.73e-07 & No & 0.1385 \\
+3 & $(-1.8004,\ -5.1750)$ & 14 & 4.33e-04 & 12 & 6.70e-05 & No & 0.0136 \\
+4 & $(-1.2368,\ -9.5770)$ & 16 & 4.52e-04 & No & 3.8037 & No & 0.0244 \\
+5 & $(4.4551,\ 0.2191)$ & No & 6.7753 & 7 & 8.29e-04 & No & 0.1205 \\
+6 & $(-0.5907,\ 9.2344)$ & 19 & 7.20e-04 & No & 2.0763 & No & 0.0201 \\
+7 & $(7.3363,\ -7.5118)$ & 33 & 8.62e-04 & No & 2.0284 & No & 0.2124 \\
+8 & $(-6.2477,\ -1.4124)$ & 16 & 6.45e-04 & 14 & 3.61e-05 & No & 0.0095 \\
+9 & $(-6.2994,\ -0.1350)$ & 26 & 5.45e-04 & 14 & 7.69e-04 & No & 0.1014 \\
+10 & $(-0.4445,\ 7.9754)$ & 20 & 7.17e-04 & No & 2.2088 & No & 0.0856 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de las 10 corridas sobre $f_2$ (Himmelblau).}
+\label{tab:eval_f2}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llcrr}
+\toprule
+Algoritmo & Función & Convergencias & Promedio $f$ minimizada & Iter.\ promedio \\
+\midrule
+GD & $f_0$ & 10/10 & 8.20e-05 & 2.00 \\
+GD & $f_1$ & 0/10 & 5.9661 & --- \\
+GD & $f_2$ & 9/10 & 0.6781 & 23.78 \\
+RMSProp & $f_0$ & 10/10 & 3.67e-04 & 4.20 \\
+RMSProp & $f_1$ & 0/10 & 12.4341 & --- \\
+RMSProp & $f_2$ & 5/10 & 1.2026 & 14.20 \\
+PSO & $f_0$ & 4/10 & 0.0018 & 38.00 \\
+PSO & $f_1$ & 0/10 & 0.1497 & --- \\
+PSO & $f_2$ & 0/10 & 0.0736 & --- \\
+\bottomrule
+\end{tabular}
+\caption{Resumen de las 10 corridas. El promedio de $f$ usa las 10
+corridas; el promedio de iteraciones usa solo las corridas convergentes.}
+\label{tab:resumen_eval}
+\end{table}
+
+\subsection{Descenso del gradiente frente a RMSProp}
+
+\begin{itemize}
+    \item \textbf{$f_0$.} Ambos convergen en las 10 corridas. GD es más
+    rápido (2 iteraciones frente a $4.20$) porque en una cuadrática
+    isotrópica un único $\alpha$ cercano a $0.5$ es casi el paso óptimo; la
+    normalización de RMSProp no aporta nada en ese caso.
+    \item \textbf{$f_1$.} Ninguno converge. GD obtiene un promedio menor
+    ($5.97$ frente a $12.43$) porque su $\alpha$ calibrado es grande y le
+    permite saltar entre cuencas, mientras que RMSProp, con paso pequeño,
+    queda en el mínimo local cercano a su inicio. La mejora de GD no es
+    un descenso controlado: su curva de aprendizaje es no monótona
+    (Figura~\ref{fig:gd_mejores}).
+    \item \textbf{$f_2$.} GD converge en más corridas (9/10 frente a 5/10),
+    pero RMSProp converge en menos iteraciones cuando lo hace ($14.20$
+    frente a $23.78$) y su corrida más rápida necesitó 7 iteraciones frente a
+    14 de GD. RMSProp tolera pasos 60 veces mayores ($0.341559$ frente a
+    $0.005492$) sin divergir, y en la corrida 5 evitó el punto silla donde
+    GD quedó detenido (Tabla~\ref{tab:silla}). Su debilidad es la
+    precisión final: con $\gamma=0.611311$ el paso normalizado no decrece
+    cerca del mínimo y 5 corridas terminan oscilando con $f$ entre $1.9$ y
+    $3.8$.
+\end{itemize}
+
+En resumen, con el presupuesto de 25 iteraciones de calibración y 50 de
+evaluación, GD fue más confiable en $f_0$ y $f_2$ y RMSProp fue más rápido
+en las corridas de $f_2$ que sí convergieron. RMSProp es menos sensible a la
+escala del gradiente, pero su paso casi constante dificulta refinar la
+solución si no se reduce $\alpha$ con el tiempo.
+
+\subsection{Comparación de los tres algoritmos}
+
+\begin{itemize}
+    \item \textbf{Convergencia a la tolerancia.} Solo GD y RMSProp alcanzan
+    $10^{-3}$ de forma sistemática en $f_0$, y GD en 9 de 10 corridas de
+    $f_2$. PSO converge en 4 corridas de $f_0$ y en ninguna de $f_1$ ni
+    $f_2$.
+    \item \textbf{Calidad promedio.} En las funciones no convexas PSO obtiene
+    el menor promedio de $f$: $0.1497$ en $f_1$ frente a $5.97$ (GD) y
+    $12.43$ (RMSProp), y $0.0736$ en $f_2$ frente a $0.678$ y $1.203$. Todas
+    sus corridas en $f_1$ terminan con $f<0.48$, por debajo del mínimo
+    local más bajo de Ackley ($2.5799$), es decir, en la cuenca del mínimo
+    global.
+    \item \textbf{Velocidad.} Cuando convergen, GD y RMSProp necesitan de 2
+    a 37 iteraciones; PSO necesita de 32 a 49 en $f_0$.
+    \item \textbf{Costo por iteración.} GD y RMSProp evalúan $f$ y su
+    gradiente en un punto; PSO evalúa $f$ en 42 a 45 partículas, aunque de
+    forma vectorizada.
+\end{itemize}
+
+\subsection{Ventajas y desventajas}
+
+\paragraph{Descenso del gradiente.}
+\emph{Ventajas:} es el método más simple, con un solo hiperparámetro, y en
+funciones suaves y bien condicionadas converge rápido cerca de un mínimo
+\cite{nocedal2006numerical}; en nuestros resultados fue el más rápido y
+confiable en $f_0$ y el más confiable en $f_2$. \emph{Desventajas:} es un
+método local que converge al mínimo de la cuenca donde inicia; es muy
+sensible a $\alpha$, que debe ajustarse a la escala del gradiente (en $f_2$,
+9 de 25 ensayos de Optuna divergieron); y se desacelera cerca de puntos
+silla y en mesetas \cite{goodfellow2016deep,dauphin2014identifying}, como
+en la corrida 5 sobre $f_2$.
+
+\paragraph{RMSProp.}
+\emph{Ventajas:} adapta el tamaño de paso por coordenada con un promedio
+móvil de gradientes al cuadrado, lo que lo hace menos sensible a la escala
+del gradiente y a problemas mal condicionados, y le ayuda a atravesar
+mesetas y puntos silla \cite{tieleman2012rmsprop,ruder2016overview}; en
+$f_2$ usó pasos mucho mayores sin divergir y convergió más rápido cuando lo
+hizo. \emph{Desventajas:} agrega hiperparámetros ($\gamma$, $\epsilon$);
+sigue siendo un método local que no escapa de mínimos locales
+\cite{goodfellow2016deep}, como muestran sus resultados en Ackley; y, con
+$\alpha$ fijo, el paso normalizado no se reduce cerca del mínimo, lo que
+produce oscilaciones.
+
+\paragraph{Enjambre de partículas.}
+\emph{Ventajas:} no requiere gradientes, por lo que sirve para funciones no
+diferenciables como Ackley en el origen; su búsqueda poblacional explora
+el dominio y es más robusta ante mínimos locales
+\cite{kennedy1995particle}, como muestra su promedio en $f_1$ y $f_2$; y se
+vectoriza de forma natural. \emph{Desventajas:} evalúa $f$ muchas veces por
+iteración; su convergencia fina es lenta y depende del ajuste de $c_1$,
+$c_2$, $n$ y, en variantes con inercia, $w$
+\cite{shi1998modified,clerc2002particle}; no garantiza convergencia a un
+mínimo; y, en la forma sin inercia implementada, las partículas siguen
+oscilando, por lo que no alcanzó la tolerancia de $10^{-3}$ en $f_1$ ni en
+$f_2$.

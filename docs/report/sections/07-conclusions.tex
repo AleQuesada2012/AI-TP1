@@ -1,11 +1,58 @@
 \section{Conclusiones}
 
-% TODO: Resumir los hallazgos. En el notebook ya están terminados el
-% análisis de funciones y la calibración y evaluación de descenso del
-% gradiente, RMSProp y enjambre de partículas; en el informe faltan por
-% actualizar las Secciones 2 a 4.
-% TODO: Señalar limitaciones conocidas (por ejemplo, la no diferenciabilidad
-% de Ackley en el origen, o la sensibilidad del descenso del gradiente a
-% la tasa de aprendizaje en f2).
-% TODO: Proponer trabajo futuro (comparación formal, pregunta de simulated
-% annealing). La calibración de RMSProp y PSO ya está hecha.
+\begin{itemize}
+    \item El análisis con PyTorch confirmó que $f_0$ es convexa con un único
+    mínimo global en $(0,0)$, que Ackley tiene su mínimo global en el origen
+    y 440 mínimos locales suaves en $[-10,10]^2$, y que Himmelblau tiene
+    cuatro mínimos globales con valor $0$ y cuatro puntos silla. Autograd y
+    el método de Newton permitieron localizar y clasificar estos puntos, y
+    una celda de verificación los comprobó numéricamente.
+    \item En la función convexa, GD calibrado es la mejor opción: converge
+    en 2 iteraciones en las 10 corridas. RMSProp también converge siempre,
+    algo más lento, y PSO solo en 4 de 10 corridas.
+    \item En Himmelblau, GD fue el más confiable (9/10) y RMSProp el más
+    rápido cuando convergió; la corrida 5 mostró a GD detenido cerca de un
+    punto silla que RMSProp evitó.
+    \item En Ackley ningún método alcanzó la tolerancia. Los métodos basados
+    en gradiente quedan atrapados en, o saltan entre, mínimos locales,
+    mientras que PSO llegó a la cuenca del mínimo global en las 10 corridas
+    pero sin refinar la solución hasta $10^{-3}$.
+    \item La calibración con Optuna dependió fuertemente de la función: el
+    mejor $\alpha$ de GD varía casi dos órdenes de magnitud entre $f_0$ y
+    $f_2$, y el mejor $\gamma$ de RMSProp varía entre $0.61$ y $0.999$.
+\end{itemize}
+
+\subsection{Limitaciones}
+
+\begin{itemize}
+    \item $f_1$ no es diferenciable en el origen, por lo que la prueba de la
+    Hessiana no se aplica allí y el mínimo global se justifica
+    analíticamente ($f_1\geq0$).
+    \item La lista de 440 mínimos locales de Ackley se obtuvo numéricamente
+    con Newton desde cada punto entero no nulo; no es una prueba de
+    exhaustividad.
+    \item La calibración usa solo 25 ensayos y 6 puntos de ajuste con 25
+    iteraciones, mientras que la evaluación usa 50 iteraciones y otros 10
+    puntos, así que los mejores hiperparámetros no están optimizados para el
+    presupuesto de evaluación.
+    \item El criterio de convergencia usa una tolerancia absoluta fija de
+    $10^{-3}$ sobre $f$, que para PSO se mide en el mejor global y para GD y
+    RMSProp en el punto actual.
+    \item El análisis de puntos silla de la Sección~\ref{sec:silla} se basa
+    en una sola corrida, no en un experimento controlado.
+    \item La combinación de GD con \emph{simulated annealing} se discute de
+    forma teórica y no se implementó.
+\end{itemize}
+
+\subsection{Trabajo futuro}
+
+\begin{itemize}
+    \item Agregar un peso de inercia decreciente o un factor de constricción
+    a PSO para amortiguar las oscilaciones y mejorar la precisión final.
+    \item Reducir $\alpha$ con el tiempo en RMSProp para evitar las
+    oscilaciones alrededor de los mínimos de $f_2$.
+    \item Implementar y evaluar la combinación de GD con \emph{simulated
+    annealing} sobre Ackley, con los mismos 10 puntos iniciales.
+    \item Diseñar un experimento controlado de puntos silla, iniciando GD y
+    RMSProp en vecindades de los cuatro puntos silla de $f_2$.
+\end{itemize}

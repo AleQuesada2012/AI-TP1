@@ -2,34 +2,69 @@
 \label{sec:pruebas}
 
 El enunciado exige documentar al menos dos pruebas unitarias por método.
-Por el momento solo RMSProp cuenta con pruebas implementadas, en la
-sección "Pruebas unitarias" de
-\texttt{notebooks/tp1\_optimizacion.ipynb}.
+La sección ``Pruebas unitarias'' de
+\texttt{notebooks/tp1\_optimizacion.ipynb} implementa exactamente dos
+pruebas para cada algoritmo. Cada prueba es una función documentada con
+Doxygen que falla mediante \texttt{assert} o
+\texttt{torch.testing.assert\_close} si el resultado no coincide con el
+esperado. En la ejecución reportada las seis pruebas se superaron (el
+notebook imprime ``Seis pruebas unitarias superadas: dos de GD, dos de
+RMSProp y dos de PSO'').
+
+\subsection{Descenso del gradiente}
+
+\begin{description}
+    \item[\texttt{probar\_actualizacion\_gd}] Ejecuta un paso de GD desde
+    $(1,-2)$ sobre $f_0$ con $\alpha=0.1$. Como $\nabla f_0(x)=2x$, el punto
+    esperado es $x_1=x_0-\alpha\cdot2x_0=(0.8,-1.6)$. La prueba compara el
+    punto inicial y el actualizado del historial con los esperados, y los
+    valores de función con $f_0(x_0)$ y $f_0(x_1)$. Verifica que el
+    gradiente de Autograd y la regla de actualización coinciden con la
+    derivada analítica.
+    \item[\texttt{probar\_historiales\_gd}] Ejecuta 5 pasos desde $(4,-3)$
+    sobre $f_0$ con $\alpha=0.1$. La solución analítica es
+    $x_k=0.8^k\,x_0$. La prueba comprueba que los historiales tienen forma
+    $(6,2)$ y $(6,)$ (punto inicial más 5 pasos) y que todos los puntos y
+    valores coinciden con la solución cerrada. Verifica que el historial
+    completo, y no solo el último paso, es correcto.
+\end{description}
 
 \subsection{RMSProp}
 
 \begin{description}
-    \item[\texttt{probar\_actualizacion\_rmsprop}] Ejecuta un único paso
-    de RMSProp desde el punto $(1,-2)$ sobre $f_0$, con $\alpha=0.1$,
-    $\gamma=0.9$ y $\epsilon=10^{-6}$, y compara el punto y el valor de
-    función resultantes contra los calculados explícitamente con la
-    ecuación de actualización, usando \texttt{torch.testing.assert\_close}.
-    Verifica que la implementación vectorizada coincide con la fórmula
-    matemática.
+    \item[\texttt{probar\_actualizacion\_rmsprop}] Ejecuta un único paso de
+    RMSProp desde $(1,-2)$ sobre $f_0$, con $\alpha=0.1$, $\gamma=0.9$ y
+    $\epsilon=10^{-6}$, y compara el punto y el valor de función
+    resultantes contra los calculados explícitamente con
+    $s_1=(1-\gamma)g_0^2$ y $x_1=x_0-\alpha g_0/\sqrt{s_1+\epsilon}$, usando
+    \texttt{torch.testing.assert\_close}. Verifica que la implementación
+    vectorizada coincide con la fórmula matemática.
     \item[\texttt{probar\_historiales\_rmsprop}] Ejecuta 25 iteraciones de
-    RMSProp sobre $f_0$, $f_1$ y $f_2$ desde puntos y tasas de aprendizaje
-    fijos, y comprueba para cada caso que: el historial de puntos tiene
-    forma $(26,2)$ y el de valores $(26,)$ (incluyendo el estado inicial y
-    los 25 pasos); todos los valores son finitos; el primer punto coincide
+    RMSProp sobre $f_0$, $f_1$ y $f_2$ desde $(4,-3)$, $(2.5,-1.5)$ y
+    $(6,6)$, con $\alpha=0.5$, $0.05$ y $0.4$ y $\gamma=0.9$, y comprueba
+    para cada caso que: el historial de puntos tiene forma $(26,2)$ y el de
+    valores $(26,)$; todos los valores son finitos; el primer punto coincide
     con el punto inicial; y el valor final es estrictamente menor que el
     inicial.
 \end{description}
 
-% TODO: Agregar al menos dos pruebas unitarias documentadas para descenso
-% del gradiente.
-% TODO: Documentar las pruebas de enjambre de partículas que ya están en el
-% notebook (probar_actualizacion_pso, probar_historiales_pso,
-% probar_objetivo_pso_reproducible y probar_mejor_particula_pso) y las
-% pruebas generales de convergencia y Optuna (probar_criterio_convergencia,
-% probar_espacios_optuna y probar_objetivo_optuna_directo). Actualizar también
-% el párrafo inicial, que todavía dice que solo RMSProp tiene pruebas.
+\subsection{Enjambre de partículas}
+
+\begin{description}
+    \item[\texttt{probar\_actualizacion\_pso}] Ejecuta 4 iteraciones con 5
+    partículas sobre $f_0$ con $c_1=c_2=0$ (semilla 7). Sin atracción, la
+    ecuación de velocidad se reduce a $v\leftarrow v$, así que cada
+    partícula debe moverse en línea recta con velocidad constante:
+    $x^{(k)}=x^{(0)}+k\,(x^{(1)}-x^{(0)})$. La prueba verifica esta relación
+    para todas las partículas e iteraciones, y que el mejor global inicial
+    sea la partícula de menor $f_0$ en $t=0$, con su valor.
+    \item[\texttt{probar\_historiales\_pso}] Ejecuta 25 iteraciones con 20
+    partículas, $c_1=c_2=0.5$ y semillas fijas sobre $f_0$, $f_1$ y $f_2$.
+    Comprueba las formas de los historiales ($(26,2)$, $(26,)$ y
+    $(26,20,2)$), que todos los valores sean finitos, que la primera
+    partícula empiece en el punto compartido, que el valor del mejor global
+    en cada iteración sea exactamente el mínimo acumulado
+    (\texttt{torch.cummin}) de $f$ sobre todas las posiciones visitadas por
+    el enjambre, y que $f$ evaluada en las posiciones del mejor global
+    coincida con los valores reportados.
+\end{description}

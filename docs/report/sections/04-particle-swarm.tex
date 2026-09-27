@@ -1,28 +1,284 @@
 \section{Enjambre de partículas}
 \label{sec:pso}
 
-% TODO: PSO ya está implementado en el notebook (run_pso, vectorizado en
-% PyTorch), calibrado con Optuna y evaluado con el protocolo de 10 corridas.
-% Falta redactar esta sección con la misma estructura que las Secciones 2 y 3:
-%   - Formulación: v <- v + c1 r1 (p - x) + c2 r2 (g - x) y x <- x + v, sin
-%     peso de inercia. El punto inicial compartido es la posición inicial
-%     de la primera partícula y las otras n - 1 se generan al azar.
-%   - Calibración (punto 3a): Optuna ajusta c1 y c2 en [0.05, 2.5] y la
-%     cantidad de partículas n en [25, 45], con 25 iteraciones fijas.
-%     Reportar la tabla "Mejores hiperparámetros encontrados con Optuna" y,
-%     como evidencia, las figuras de la subsección "5. Curvas de aprendizaje
-%     de PSO con los mejores hiperparámetros" del notebook.
-%   - Protocolo de 10 corridas (punto 3b): mismos 10 puntos iniciales que
-%     descenso del gradiente y RMSProp, máximo 50 iteraciones; usar las
-%     tablas de la sección "Evaluación con los mejores hiperparámetros".
-%     Solo converge en f0 (4 de 10 corridas); en f1 y f2 no alcanza la
-%     tolerancia de 1e-3, aunque obtiene el menor promedio de los tres
-%     algoritmos. Sin inercia, las partículas siguen oscilando alrededor
-%     del mejor global.
-%   - Mejor corrida (punto 3c): igual que en GD y RMSProp, trayectoria sobre
-%     las curvas de nivel de la partícula que llegó más cerca del mínimo,
-%     curva de aprendizaje, evolución de f por partícula y evolución de esa
-%     partícula.
-%   - Respuesta a cómo se podría combinar descenso del gradiente con
-%     simulated annealing y qué beneficios tendría (punto 3d).
-%   - Pruebas unitarias documentadas en la Sección~\ref{sec:pruebas}.
+\subsection{Formulación}
+
+La optimización por enjambre de partículas (PSO) \cite{kennedy1995particle}
+mantiene $n$ soluciones candidatas (partículas) con posición $x_i$ y
+velocidad $v_i$. Cada partícula recuerda su mejor posición personal $p_i$ y
+el enjambre comparte la mejor posición global $g$. La implementación
+\texttt{run\_pso(T, c1, c2, func, punto\_inicial, n\_particulas)} usa la
+forma original, sin peso de inercia:
+\[
+v_i \leftarrow v_i + c_1 r_1 \odot (p_i - x_i) + c_2 r_2 \odot (g - x_i),
+\qquad
+x_i \leftarrow x_i + v_i,
+\]
+donde $r_1,r_2\sim U[0,1)$ se sortean por partícula, por coordenada y por
+iteración; $c_1$ pondera el componente cognitivo y $c_2$ el social. PSO no
+usa gradientes, solo evaluaciones de $f$.
+
+Detalles de la implementación:
+\begin{itemize}
+    \item Todo el enjambre se almacena en tensores de forma $(n,2)$: las
+    posiciones, velocidades, mejores personales y números aleatorios se
+    actualizan con operaciones vectoriales, $f$ se evalúa para todas las
+    partículas a la vez sobre \texttt{x.T}, y la actualización de los
+    mejores personales usa una máscara booleana (\texttt{valores <
+    mejores\_valores}), sin ciclos sobre las partículas.
+    \item Las posiciones iniciales son uniformes en $[-10,10]^2$, salvo la
+    primera partícula, que se coloca en el punto inicial compartido con GD y
+    RMSProp. Las velocidades iniciales son uniformes en $[0,1)^2$.
+    \item No se limitan velocidades ni posiciones al dominio.
+    \item La función devuelve el historial del mejor global y de su valor
+    (forma $(T+1,2)$ y $(T+1,)$) y todas las posiciones visitadas (forma
+    $(T+1,n,2)$), que se usan para graficar cada partícula.
+\end{itemize}
+
+\subsection{Demostración con hiperparámetros fijados manualmente}
+
+Con $c_1=c_2=0.5$, 5 partículas, 25 iteraciones y semillas
+\texttt{torch.manual\_seed(1000)}, \texttt{(1001)} y \texttt{(1002)}, desde
+los mismos puntos iniciales de las demostraciones de GD y RMSProp, el mejor
+valor global pasó de $7.256698$ a $0.045008$ en $f_0$, de $10.775237$ a
+$2.816847$ en $f_1$ y de $59.136847$ a $11.416753$ en $f_2$. El valor
+inicial ya es menor que el de GD porque el mejor global considera las 5
+posiciones iniciales. La Figura~\ref{fig:pso_demo} muestra estas corridas;
+la gráfica de evolución por partícula identifica cada partícula por su
+posición inicial y la línea punteada marca el valor de convergencia
+$f^*+10^{-3}$.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-pso-sobre-f2}
+\end{subfigure}
+
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{evolucion-de-f0-x-y-en-cada-particula-pso-particulas-1-5}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{evolucion-de-f1-x-y-en-cada-particula-pso-particulas-1-5}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{evolucion-de-f2-x-y-en-cada-particula-pso-particulas-1-5}
+\end{subfigure}
+\caption{Demostración de PSO ($c_1=c_2=0.5$, 5 partículas) sobre $f_0$,
+$f_1$ y $f_2$ (de izquierda a derecha): curva de aprendizaje del mejor
+global (arriba) y evolución de $f$ en cada partícula (abajo).}
+\label{fig:pso_demo}
+\end{figure}
+
+\subsection{Calibración de hiperparámetros con Optuna}
+
+Optuna ajusta $c_1\in[0.05,\ 2.5]$, $c_2\in[0.05,\ 2.5]$ y la cantidad de
+partículas $n\in\{25,\dots,45\}$, con 25 iteraciones fijas y los mismos 6
+puntos de ajuste; cada punto es la posición inicial de la primera
+partícula. Para que cada ensayo sea reproducible, antes de cada corrida se
+fija \texttt{torch.manual\_seed(42 + índice del punto)}; así, dos ensayos con
+la misma $n$ usan los mismos números aleatorios y solo difieren en $c_1$ y
+$c_2$. El objetivo es el promedio del mejor valor global al final de las 6
+corridas. Ningún ensayo se podó.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrcrr}
+\toprule
+Función & Mejor $c_1$ & Mejor $c_2$ & Mejor $n$ & Convergencias & Iter.\ promedio & Promedio $f$ final \\
+\midrule
+$f_0$ & $1.444168$ & $0.173357$ & 43 & 3/6 & $12.33$ & $0.002467$ \\
+$f_1$ & $1.073939$ & $0.214430$ & 42 & 0/6 & ---     & $0.240168$ \\
+$f_2$ & $0.443200$ & $0.080573$ & 45 & 0/6 & ---     & $0.081342$ \\
+\bottomrule
+\end{tabular}
+\caption{Mejores hiperparámetros de PSO encontrados por Optuna (25
+ensayos, 25 iteraciones, 6 puntos de ajuste).}
+\label{tab:pso_optuna}
+\end{table}
+
+En las tres funciones Optuna prefirió $c_2$ pequeño y $c_1$ mayor, es decir,
+dar más peso a la memoria de cada partícula que a la atracción hacia el
+mejor global, y una cantidad de partículas cercana al máximo del rango.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.30\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.68\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.30\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.68\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.30\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-pso-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.68\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-pso-sobre-f2}
+\end{subfigure}
+\caption{Proceso de calibración de PSO con Optuna para $f_0$, $f_1$ y $f_2$
+(de arriba hacia abajo): historial de optimización (izquierda) y efecto de
+$c_1$, $c_2$ y $n$ con el mejor ensayo marcado (derecha).}
+\label{fig:pso_optuna}
+\end{figure}
+
+Como evidencia de los mejores hiperparámetros, se repitieron las 6 corridas
+de ajuste de cada función con los valores de la
+Tabla~\ref{tab:pso_optuna} y las mismas semillas del objetivo
+(Figura~\ref{fig:pso_curvas_calibracion}). Cada curva es el mejor valor
+global por iteración y la curva negra es su promedio, cuyo último valor
+coincide con el mejor valor de Optuna: $0.002467$, $0.240168$ y
+$0.081342$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f0}
+\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f1}
+\includegraphics[width=0.85\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f2}
+\caption{Curvas de aprendizaje de PSO con los mejores hiperparámetros sobre
+los 6 puntos de ajuste, para $f_0$, $f_1$ y $f_2$.}
+\label{fig:pso_curvas_calibracion}
+\end{figure}
+
+\subsection{Evaluación con los mejores hiperparámetros}
+
+Con los valores de la Tabla~\ref{tab:pso_optuna} se ejecutaron 10 corridas
+de 50 iteraciones. La primera partícula de cada corrida inicia en el mismo
+punto que GD y RMSProp, y el resto del enjambre, las velocidades y los
+coeficientes aleatorios se generan con
+\texttt{torch.manual\_seed(20260920 + corrida)}
+(Sección~\ref{sec:evaluacion}):
+
+\begin{itemize}
+    \item $f_0$: 4/10 corridas convergen, con $38.00$ iteraciones en
+    promedio; promedio de $f$ minimizada $0.0018$.
+    \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $0.1497$,
+    el menor de los tres algoritmos.
+    \item $f_2$: 0/10 corridas convergen; promedio de $f$ final $0.0736$,
+    también el menor de los tres algoritmos.
+\end{itemize}
+
+PSO se acerca a la región del mínimo global en casi todas las corridas,
+pero rara vez alcanza la precisión de $10^{-3}$. La evolución por partícula
+de la mejor corrida sobre $f_2$ (Figura~\ref{fig:pso_particulas_f2})
+muestra por qué: aun en las últimas iteraciones las partículas oscilan con
+valores de $f$ de miles. Sin peso de inercia la velocidad acumula las
+atracciones de todas las iteraciones y no se amortigua, por lo que las
+partículas siguen sobrepasando el mejor global en lugar de refinarlo. El
+peso de inercia $w<1$ \cite{shi1998modified} o el factor de constricción
+\cite{clerc2002particle} se propusieron precisamente para controlar este
+efecto.
+
+\subsection{Mejor corrida por función}
+
+Igual que en GD y RMSProp, la gráfica de curvas de nivel muestra una sola
+trayectoria: la de la partícula que llegó al valor más cercano a 0, desde
+su posición inicial hasta ese punto. La curva de aprendizaje corresponde al
+mejor valor global.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f0-particula-27}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f1-particula-3}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f2-particula-26}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-pso-sobre-f2}
+\end{subfigure}
+\caption{Mejores corridas de PSO. $f_0$: corrida 1, converge en 32
+iteraciones ($f=3.58\times10^{-4}$, partícula 27 de 43). $f_1$: corrida 2,
+no converge ($f=0.019854$, alcanzado por la partícula 3 de 42 en la
+iteración 22). $f_2$: corrida 8, no converge ($f=0.009512$, alcanzado por la
+partícula 26 de 45 en la iteración 34).}
+\label{fig:pso_mejores}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{evaluacion-evolucion-de-f-en-cada-particula-de-pso-sobre-f2-particulas-1-10}
+\includegraphics[width=0.85\linewidth]{evaluacion-particula-mas-cercana-al-minimo-de-pso-sobre-f2-particula-26}
+\caption{Mejor corrida de PSO sobre $f_2$: evolución de $f$ en las
+partículas 1 a 10 (arriba) y en la partícula 26, que alcanzó el valor más
+cercano al mínimo (abajo). Las gráficas del resto de partículas y de $f_0$
+y $f_1$ están en \texttt{results/figures/} con el prefijo
+\texttt{evaluacion-evolucion-de-f-en-cada-particula}.}
+\label{fig:pso_particulas_f2}
+\end{figure}
+
+\subsection{Descenso del gradiente combinado con simulated annealing}
+
+\emph{Simulated annealing} (SA) \cite{kirkpatrick1983optimization} propone
+un movimiento aleatorio $x'$ y lo acepta siempre si $f(x')\leq f(x)$, o con
+probabilidad $\exp[-(f(x')-f(x))/T_k]$ si empeora, donde la temperatura
+$T_k$ disminuye con las iteraciones. Aceptar algunos empeoramientos le
+permite salir de mínimos locales, pero sus propuestas no usan información
+local y convergen lentamente.
+
+Una forma de combinarlo con GD es usar el paso de gradiente como propuesta
+y agregarle ruido controlado por la temperatura:
+\[
+x' = x_t - \alpha\nabla f(x_t) + \sqrt{2\alpha T_k}\,\xi_t,
+\qquad \xi_t\sim\mathcal{N}(0,I),
+\]
+y después aceptar o rechazar $x'$ con el criterio de Metropolis. Con
+$T_k\to0$ el ruido desaparece y el método se reduce a GD. Esta idea está
+emparentada con la dinámica de Langevin, para la cual se ha demostrado
+convergencia al mínimo global bajo un enfriamiento suficientemente lento
+\cite{gelfand1991recursive}, y con las variantes de GD perturbado que
+escapan de puntos silla de forma eficiente \cite{jin2017escape}. Otra
+variante es alternar: ejecutar GD hasta estancarse y, entonces, dar un salto
+de SA desde el punto alcanzado.
+
+Beneficios esperados:
+\begin{itemize}
+    \item \textbf{Escape de mínimos locales.} En Ackley, ni GD ni RMSProp
+    convergieron en ninguna de las 10 corridas (Tabla~\ref{tab:eval_f1}), y
+    RMSProp quedó en mínimos locales; con temperatura alta, el ruido
+    permitiría saltar las barreras entre cuencas y, al enfriar, asentarse en
+    una cuenca de menor valor.
+    \item \textbf{Escape de puntos silla.} La perturbación rompe la simetría
+    cerca de una silla, donde el gradiente es casi nulo, como en la
+    corrida 5 sobre $f_2$ (Tabla~\ref{tab:silla}).
+    \item \textbf{Precisión final.} Al enfriar, el término de gradiente
+    domina y el método refina la solución con la rapidez de GD, algo que
+    SA puro o PSO sin inercia no logran en 50 iteraciones.
+\end{itemize}
+El costo es un hiperparámetro adicional, el calendario de enfriamiento, y
+evaluaciones extra de $f$ para el criterio de aceptación. Esta combinación
+no se implementó en el notebook; los beneficios anteriores son
+expectativas basadas en la literatura, no resultados medidos.

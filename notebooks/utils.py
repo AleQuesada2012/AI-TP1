@@ -1,7 +1,10 @@
 import math
 import numbers
 import random
+import re
+import unicodedata
 import warnings
+from pathlib import Path
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -13,6 +16,60 @@ from IPython.display import display
 from matplotlib import patheffects
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullLocator
+
+_directorio_figuras = None
+_prefijo_figuras = ""
+_nombres_figuras = set()
+
+
+def configurar_exportacion_figuras(directorio):
+    """!
+    @brief Activa el guardado en PNG de cada figura que se muestre en el notebook.
+    @param directorio Carpeta de destino; se crea si no existe y se eliminan sus PNG previos.
+    @return Ruta absoluta de la carpeta de destino.
+    """
+    global _directorio_figuras
+    # Se parte del estilo por omisión para que el tema del IDE (p. ej. texto blanco del
+    # modo oscuro de PyCharm) no llegue a las figuras del informe.
+    matplotlib.rcdefaults()
+    _directorio_figuras = Path(directorio).resolve()
+    _directorio_figuras.mkdir(parents=True, exist_ok=True)
+    for archivo in _directorio_figuras.glob("*.png"):
+        archivo.unlink()
+    _nombres_figuras.clear()
+    return _directorio_figuras
+
+
+def _nombre_archivo_figura(figure):
+    """!
+    @brief Construye un nombre de archivo estable a partir del título de la figura.
+    @param figure Figura de Matplotlib que se va a guardar.
+    @return Nombre sin extensión, en minúsculas, ASCII y separado por guiones.
+    """
+    titulo = figure._suptitle.get_text() if figure._suptitle is not None else ""
+    if not titulo:
+        titulo = next((axis.get_title() for axis in figure.axes if axis.get_title()), "figura")
+    titulo = f"{_prefijo_figuras} {titulo.splitlines()[0]}".replace("–", "-")
+    titulo = unicodedata.normalize("NFKD", titulo).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^a-z0-9]+", "-", re.sub(r"[$_{}\\]", "", titulo.lower())).strip("-")
+
+    nombre, copia = base, 2
+    while nombre in _nombres_figuras:
+        nombre, copia = f"{base}-{copia}", copia + 1
+    _nombres_figuras.add(nombre)
+    return nombre
+
+
+def _mostrar_figura(figure):
+    """!
+    @brief Guarda la figura si la exportación está activa y luego la muestra.
+    @param figure Figura de Matplotlib ya terminada.
+    @return None.
+    """
+    if _directorio_figuras is not None:
+        ruta = _directorio_figuras / f"{_nombre_archivo_figura(figure)}.png"
+        figure.savefig(ruta, dpi=150, bbox_inches="tight", facecolor="white")
+    plt.show()
 
 
 def _points_as_tensor(points):
@@ -237,7 +294,7 @@ def plot_critical_points(
     axis.set_ylabel("y")
     axis.set_aspect("equal", adjustable="box")
     axis.legend()
-    plt.show()
+    _mostrar_figura(figure)
 
 
 def plot_learning_curve(function_values, title="Curva de aprendizaje"):
@@ -301,7 +358,7 @@ def plot_learning_curve(function_values, title="Curva de aprendizaje"):
     axis.grid(alpha=0.3)
     axis.legend()
     figure.tight_layout()
-    plt.show()
+    _mostrar_figura(figure)
     return figure, axis
 
 
@@ -478,7 +535,7 @@ def plot_func_hist(
     axis.grid(alpha=0.2)
     axis.legend(loc="best")
     figure.tight_layout()
-    plt.show()
+    _mostrar_figura(figure)
     return figure, axis
 
 
@@ -583,7 +640,7 @@ def plot_historial_pso(
     axis.set_ylabel(r"$f(x, y)$")
     axis.grid(alpha=0.3)
     _leyenda_exterior(figure, axis)
-    plt.show()
+    _mostrar_figura(figure)
     return figure, axis
 
 
@@ -744,7 +801,7 @@ def plot_curvas_aprendizaje(
     axis.set_ylabel(r"$f(x_t)$")
     axis.grid(alpha=0.3)
     figure.legend(loc="outside right upper")
-    plt.show()
+    _mostrar_figura(figure)
     return figure, axis
 
 
@@ -846,7 +903,7 @@ def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
         pad=0.10,
     )
     surface_colorbar.set_label(z_label)
-    plt.show()
+    _mostrar_figura(figure)
 
 
 def coordenadas_minimo_malla(x_grid, y_grid, values):
@@ -1306,7 +1363,7 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
         axis.set_yscale("log")
     elif escala_y == "symlog":
         axis.set_yscale("symlog", linthresh=max(float(magnitudes_positivas.min()), 1e-8))
-    plt.show()
+    _mostrar_figura(axis.figure)
 
     ancho = 7 if len(parametros) == 1 else 6 * len(parametros)
     figure, axes = plt.subplots(
@@ -1352,7 +1409,7 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
     axes[0].legend()
     figure.suptitle(f"Efecto de hiperparámetros: {algoritmo} sobre {nombre_funcion}")
     figure.tight_layout(rect=(0, 0, 1, 0.94))
-    plt.show()
+    _mostrar_figura(figure)
 
 
 def graficar_mejor_corrida(
@@ -1377,6 +1434,39 @@ def graficar_mejor_corrida(
     @param y_grid Valores del eje y usados para construir la malla.
     @param enjambres_evaluacion Posiciones de todas las partículas en cada corrida de PSO.
     @param tolerancia Brecha usada para dibujar el valor de convergencia de PSO.
+    @return None.
+    """
+    global _prefijo_figuras
+    _prefijo_figuras = "evaluacion"
+    try:
+        _graficar_mejor_corrida(
+            algoritmo,
+            nombre_funcion,
+            mejores_corridas,
+            historiales_evaluacion,
+            funciones_evaluacion,
+            x_grid,
+            y_grid,
+            enjambres_evaluacion,
+            tolerancia,
+        )
+    finally:
+        _prefijo_figuras = ""
+
+
+def _graficar_mejor_corrida(
+    algoritmo,
+    nombre_funcion,
+    mejores_corridas,
+    historiales_evaluacion,
+    funciones_evaluacion,
+    x_grid,
+    y_grid,
+    enjambres_evaluacion,
+    tolerancia,
+):
+    """!
+    @brief Implementa graficar_mejor_corrida; las figuras se exportan con prefijo de evaluación.
     @return None.
     """
     seleccion = mejores_corridas[(algoritmo, nombre_funcion)]

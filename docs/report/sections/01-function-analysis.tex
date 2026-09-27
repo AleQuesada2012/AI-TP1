@@ -5,7 +5,9 @@
 Las tres funciones se evaluaron sobre una malla regular de $401\times401$
 puntos en $[-10,10]^2$, construida con \texttt{torch.meshgrid}. Para cada
 una se generaron curvas de nivel (\texttt{contourf}) y una superficie 3D
-mediante la función auxiliar \texttt{plot\_function\_2d\_3d} del notebook.
+mediante la función auxiliar \texttt{plot\_function\_2d\_3d} de
+\texttt{utils.py}. En las curvas de nivel el color representa
+$\log(1+f-f_{\min})$ únicamente para que los valles sean visibles.
 
 \begin{align}
 f_0(x,y) &= x^2+y^2, \\
@@ -14,15 +16,26 @@ f_1(x,y) &= -20\exp\!\left[-0.2\sqrt{0.5(x^2+y^2)}\right]
 f_2(x,y) &= (x^2+y-11)^2+(x+y^2-7)^2.
 \end{align}
 
-% TODO: Insertar aquí las figuras exportadas a results/figures/ (curvas de
-% nivel y superficie 3D) para f0, f1 y f2.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{f0-x-y-x-2-y-2}
+\includegraphics[width=\linewidth]{f1-x-y-funcion-de-ackley}
+\includegraphics[width=\linewidth]{f2-x-y-funcion-de-himmelblau}
+\caption{Curvas de nivel (\texttt{contourf} sobre la malla de
+\texttt{torch.meshgrid}) y superficies 3D de $f_0$, $f_1$ y $f_2$ en
+$[-10,10]^2$.}
+\label{fig:funciones}
+\end{figure}
 
 \subsection{Convexidad}
 
 $f_0$ es una función cuadrática con Hessiana constante $2I$, positiva
 definida en todo el dominio, por lo que es convexa. $f_1$ (Ackley) y $f_2$
-(Himmelblau) no son convexas: ambas presentan múltiples mínimos locales y
-puntos silla, según se muestra a continuación.
+(Himmelblau) no son convexas: una función convexa diferenciable no puede
+tener puntos silla ni mínimos aislados distintos, y ambas presentan puntos
+silla con determinante de la Hessiana negativo. Además, $f_1$ tiene cientos
+de mínimos locales y $f_2$ tiene cuatro mínimos globales separados, según se
+muestra a continuación.
 
 \subsection{Derivación analítica de los gradientes}
 \label{sec:gradientes_analiticos}
@@ -137,10 +150,11 @@ coinciden con esta forma cerrada.
 \subsection{Búsqueda de puntos críticos con PyTorch}
 
 Los mínimos observados sobre la malla discreta (\texttt{torch.argmin}) son
-solo aproximaciones limitadas por su resolución: para $f_0$ y $f_1$ el
-mínimo muestreado se ubicó en $(0,0)$, con valores del orden de
-$10^{-13}$--$10^{-14}$, y para $f_2$ en $(3,2)$, con un valor del orden de
-$10^{-13}$.
+solo aproximaciones limitadas por su resolución: para $f_0$ el mínimo
+muestreado se ubicó en $(0,0)$ con valor $4.441\times10^{-14}$, para $f_1$
+en $(0,0)$ con valor $0$, y para $f_2$ en $(3,2)$ con valor
+$2.274\times10^{-13}$. Como \texttt{torch.argmin} devuelve un solo índice,
+la malla muestra solo uno de los cuatro mínimos de $f_2$.
 
 Para refinar esas aproximaciones se calculó el gradiente y la Hessiana
 $2\times2$ con \texttt{torch.autograd.grad} y se aplicó el método de
@@ -148,7 +162,9 @@ Newton
 \[
 H(p)\,\Delta p = \nabla f(p), \qquad p_{\text{nuevo}} = p-\Delta p,
 \]
-partiendo de puntos iniciales tomados de las curvas de nivel. Cada punto
+partiendo de puntos iniciales tomados de las curvas de nivel
+\cite{nocedal2006numerical}. El sistema lineal se resuelve con
+\texttt{torch.linalg.solve}, sin invertir explícitamente $H$. Cada punto
 estacionario se clasificó según el signo del determinante $D$ de la
 Hessiana: $D<0$ indica un punto silla; $D>0$ con $f_{xx}>0$ indica un
 mínimo local; $D>0$ con $f_{xx}<0$ indica un máximo local.
@@ -175,11 +191,57 @@ notebook). Este conteo es un resultado numérico, no una prueba analítica de
 exhaustividad.
 
 \subsubsection{$f_2$ (Himmelblau)}
-Se encontraron 4 mínimos globales, todos con valor $0$: $(3, 2)$,
-$(-2.805118,\ 3.131313)$, $(-3.779310,\ -3.283186)$ y $(3.584428,\
--1.848127)$. También se identificaron 4 puntos silla, con valores
-$13.311926$, $67.719150$, $104.015163$ y $178.337239$ respectivamente.
+Se encontraron 4 mínimos y 4 puntos silla (Tabla~\ref{tab:criticos_f2}).
+Como $f_2$ es una suma de cuadrados, $f_2\geq0$; los cuatro mínimos tienen
+valor $0$ y, por tanto, son mínimos globales.
 
-% TODO: Insertar las figuras de plot_critical_points (mínimos y puntos
-% silla marcados sobre las curvas de nivel) exportadas a
-% results/figures/.
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Tipo & $x$ & $y$ & $f_2(x,y)$ & $\det H$ \\
+\midrule
+Mínimo global & $3.000000$  & $2.000000$  & $0$ & $2116.00$ \\
+Mínimo global & $-2.805118$ & $3.131313$  & $0$ & $5222.90$ \\
+Mínimo global & $-3.779310$ & $-3.283186$ & $0$ & $9460.56$ \\
+Mínimo global & $3.584428$  & $-1.848127$ & $0$ & $3024.54$ \\
+Punto silla   & $3.385154$  & $0.073852$  & $13.311926$  & $-1378.86$ \\
+Punto silla   & $0.086678$  & $2.884255$  & $67.719150$  & $-2394.09$ \\
+Punto silla   & $-3.073026$ & $-0.081353$ & $104.015163$ & $-2872.17$ \\
+Punto silla   & $-0.127961$ & $-1.953715$ & $178.337239$ & $-1026.58$ \\
+\bottomrule
+\end{tabular}
+\caption{Puntos críticos de $f_2$ refinados con Newton y clasificados con
+la Hessiana. En todos, $\lVert\nabla f_2\rVert<10^{-8}$.}
+\label{tab:criticos_f2}
+\end{table}
+
+\subsubsection{Verificación}
+Una celda de verificación del notebook comprueba con \texttt{assert} que
+todos los puntos suaves tienen $\lVert\nabla f\rVert<10^{-6}$, que los
+puntos silla tienen $\det H<0$ y los mínimos $\det H>0$, que los mínimos
+globales de $f_0$, $f_1$ y $f_2$ tienen valor menor que $10^{-8}$, y los
+conteos de 8 mínimos locales centrales, 440 mínimos locales en el dominio y
+4 puntos silla para $f_1$ y $f_2$.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{puntos-criticos-de-f0}
+\caption{$f_0$, vista $[-2,2]^2$.}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{puntos-criticos-centrales-de-f1-ackley}
+\caption{$f_1$, vista $[-1.5,1.5]^2$.}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\linewidth}
+\includegraphics[width=\linewidth]{puntos-criticos-de-f2-himmelblau}
+\caption{$f_2$, vista $[-5,5]^2$.}
+\end{subfigure}
+\caption{Puntos críticos encontrados con PyTorch: estrellas doradas para
+mínimos globales, círculos celestes para mínimos locales y equis rojas para
+puntos silla.}
+\label{fig:puntos_criticos}
+\end{figure}

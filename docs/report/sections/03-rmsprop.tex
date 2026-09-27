@@ -2,22 +2,26 @@
 
 \subsection{Formulación}
 
-RMSProp mantiene un promedio móvil, por coordenada, de los gradientes al
-cuadrado, y lo usa para escalar el tamaño de paso de cada componente:
+RMSProp \cite{tieleman2012rmsprop} mantiene un promedio móvil, por
+coordenada, de los gradientes al cuadrado y lo usa para escalar el tamaño
+de paso de cada componente:
 \[
 s_t = \gamma s_{t-1} + (1-\gamma)g_t^2, \qquad
 x_{t+1} = x_t - \frac{\alpha}{\sqrt{s_t+\epsilon}}\odot g_t,
 \]
-con $s_0=0$. La implementación sigue la formulación de
-\cite{d2l_rmsprop}.
+con $g_t=\nabla f(x_t)$, $s_0=0$ y operaciones elemento a elemento. La
+implementación sigue la formulación de \cite{d2l_rmsprop}. La función
+\texttt{run\_rmsprop(alpha, gamma, epsilon, t, func, punto\_inicial)}
+calcula el gradiente con Autograd igual que GD y realiza las dos
+actualizaciones como operaciones tensoriales sobre las dos coordenadas a la
+vez. Si el valor, el gradiente o $s_t$ dejan de ser finitos, lanza un
+\texttt{ValueError}. En todo el trabajo se usa $\epsilon=10^{-6}$.
 
-\subsection{Aplicación a cada función}
+\subsection{Demostración con hiperparámetros fijados manualmente}
 
-Se usó $\gamma=0.9$ y $\epsilon=10^{-6}$ en las tres funciones, con
-$P=25$ iteraciones, reutilizando el mismo punto inicial que la corrida de
-descenso del gradiente correspondiente (Sección~\ref{sec:gd_aplicacion})
-para que la comparación parta de la misma solución. La tasa de
-aprendizaje se fijó manualmente por función:
+Se usó $\gamma=0.9$ y $\epsilon=10^{-6}$ en las tres funciones, con $P=25$
+iteraciones y el mismo punto inicial que la demostración de GD
+(Tabla~\ref{tab:gd_demo}):
 
 \begin{table}[H]
 \centering
@@ -25,40 +29,220 @@ aprendizaje se fijó manualmente por función:
 \toprule
 Función & $\alpha$ & $f(x_0)$ & $f(x_{25})$ \\
 \midrule
-$f_0$ & $0.5$  & $107.135818$ & $0.020914$ \\
-$f_1$ & $0.05$ & $16.620710$  & $16.389915$ \\
-$f_2$ & $0.4$  & $1189.057129$ & $0.000001$ \\
+$f_0$ & $0.5$  & $58.030396$   & $0.000233$ \\
+$f_1$ & $0.05$ & $14.279894$   & $12.579832$ \\
+$f_2$ & $0.4$  & $2419.764335$ & $0.036919$ \\
 \bottomrule
 \end{tabular}
-\caption{Resultados de una corrida de RMSProp por función, usando los
-mismos puntos iniciales que descenso del gradiente.}
+\caption{Demostración de RMSProp con 25 iteraciones, desde los mismos
+puntos iniciales que GD.}
+\label{tab:rms_demo}
 \end{table}
 
-En $f_1$ el valor final permanece lejos de cero: el punto inicial
-aleatorio condujo a la cuenca de un mínimo local de Ackley distinto del
-origen, no a una falla del algoritmo.
+En $f_1$ el valor final permanece lejos de cero: el punto inicial condujo,
+igual que en GD, a la cuenca del mínimo local cercano a $(0,\ 7)$. En $f_2$,
+RMSProp llega cerca del mismo mínimo que GD, $(-3.779310,\ -3.283186)$, con
+$\alpha=0.4$, un paso 200 veces mayor que el de GD, sin divergir: al
+dividir entre $\sqrt{s_t}$, la magnitud de cada componente del paso queda
+acotada aproximadamente por $\alpha/\sqrt{1-\gamma}$ aunque el gradiente
+sea del orden de miles.
 
-% TODO: Insertar aquí la curva de aprendizaje y la trayectoria
-% (plot_func_hist) de cada corrida.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f0}
+\end{subfigure}
 
-\subsection{Calibración de hiperparámetros}
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f1}
+\end{subfigure}
 
-% TODO: Documentar la calibración de RMSProp con Optuna que ya está en el
-% notebook: ajusta alpha y gamma (epsilon fijo en 1e-6) con 25 iteraciones
-% fijas. Reportar los mejores valores (tabla "Mejores hiperparámetros
-% encontrados con Optuna") junto con las gráficas del proceso de búsqueda.
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-rmsprop-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-rmsprop-sobre-f2}
+\end{subfigure}
+\caption{Curvas de aprendizaje y trayectorias de la demostración de
+RMSProp (Tabla~\ref{tab:rms_demo}).}
+\label{fig:rms_demo}
+\end{figure}
 
-\subsection{Pruebas unitarias}
+\subsection{Calibración de hiperparámetros con Optuna}
 
-Ver la Sección~\ref{sec:pruebas} para la documentación de las dos pruebas
-unitarias ya implementadas para RMSProp.
+Optuna ajusta $\alpha$ (escala logarítmica) y $\gamma\in[0.5,\ 0.999]$;
+$\epsilon$ queda fijo en $10^{-6}$ y las iteraciones en 25. Los rangos de
+$\alpha$ fueron $[0.01,\ 1]$ para $f_0$, $[0.001,\ 0.5]$ para $f_1$ y
+$[0.01,\ 2]$ para $f_2$. El protocolo es el mismo que en GD: 25 ensayos,
+6 puntos de ajuste y el promedio de $f$ final como objetivo. Ningún ensayo
+de RMSProp se podó.
 
-% TODO: Documentar el protocolo de 10 corridas (máximo 50 iteraciones), ya
-% ejecutado en la sección "Evaluación con los mejores hiperparámetros" del
-% notebook: valor promedio de la función minimizada y cantidad promedio de
-% iteraciones para converger.
-% TODO: Insertar la trayectoria y la curva de aprendizaje de la corrida con
-% convergencia más rápida para cada función (sección "Mejores corridas por
-% velocidad de convergencia" del notebook).
-% TODO: Responder por qué RMSProp evita mejor los puntos silla que el
-% descenso del gradiente (ver Sección~\ref{sec:comparacion}).
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrcrr}
+\toprule
+Función & Mejor $\alpha$ & Mejor $\gamma$ & Convergencias & Iter.\ promedio & Promedio $f$ final \\
+\midrule
+$f_0$ & $0.629157$ & $0.992523$ & 6/6 & $5.00$  & $8.31\times10^{-19}$ \\
+$f_1$ & $0.018006$ & $0.998647$ & 0/6 & ---     & $13.035990$ \\
+$f_2$ & $0.341559$ & $0.611311$ & 2/6 & $11.50$ & $2.656585$ \\
+\bottomrule
+\end{tabular}
+\caption{Mejores hiperparámetros de RMSProp encontrados por Optuna (25
+ensayos, 25 iteraciones, 6 puntos de ajuste).}
+\label{tab:rms_optuna}
+\end{table}
+
+En $f_1$, Optuna eligió un paso pequeño y $\gamma$ cercano a 1: con esa
+configuración RMSProp desciende de forma estable hasta el mínimo local más
+cercano. Ninguna combinación probada alcanzó la tolerancia en Ackley, y el
+promedio obtenido ($13.04$) es peor que el de GD ($5.89$).
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.36\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.62\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.36\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.62\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.36\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-rmsprop-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.62\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-rmsprop-sobre-f2}
+\end{subfigure}
+\caption{Proceso de calibración de RMSProp con Optuna para $f_0$, $f_1$ y
+$f_2$ (de arriba hacia abajo): historial de optimización (izquierda) y
+efecto de $\alpha$ y $\gamma$ con el mejor ensayo marcado (derecha).}
+\label{fig:rms_optuna}
+\end{figure}
+
+\subsection{Evaluación con los mejores hiperparámetros}
+
+Con los valores de la Tabla~\ref{tab:rms_optuna}, desde los mismos 10
+puntos y con un máximo de 50 iteraciones (Sección~\ref{sec:evaluacion}):
+
+\begin{itemize}
+    \item $f_0$: 10/10 corridas convergen, con $4.20$ iteraciones en
+    promedio; promedio de $f$ minimizada $3.67\times10^{-4}$.
+    \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $12.4341$.
+    Los valores finales, entre $8.6165$ y $15.5491$, corresponden a mínimos
+    locales alejados del origen: con el paso pequeño calibrado, RMSProp
+    desciende hasta un mínimo local cercano a su punto inicial, como muestra
+    la trayectoria de la corrida 5 (Figura~\ref{fig:rms_mejores}).
+    \item $f_2$: 5/10 corridas convergen, con $14.20$ iteraciones en
+    promedio; promedio de $f$ minimizada $1.2026$.
+\end{itemize}
+
+Las 5 corridas de $f_2$ que no convergen terminan con valores entre
+$1.9068$ y $3.8037$. Con $\gamma=0.611311$ el promedio $s_t$ sigue de cerca
+a $g_t^2$, de modo que el paso normalizado no se reduce cuando el gradiente
+se hace pequeño y la trayectoria oscila alrededor de un mínimo. La
+corrida 5 ilustra este comportamiento (Tabla~\ref{tab:silla}): llega a
+$f=0.0170$ en $t=10$ y después vuelve a valores cercanos a $2.25$.
+
+\subsection{Mejor corrida por función}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-rmsprop-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-rmsprop-sobre-f2}
+\end{subfigure}
+\caption{Mejores corridas de RMSProp. $f_0$: corrida 7, converge en 2
+iteraciones ($f=4.43\times10^{-5}$). $f_1$: corrida 5, no converge y queda
+en el mínimo local cercano a $(4,\ 0)$ ($f=8.616490$). $f_2$: corrida 5,
+converge en 7 iteraciones ($f=8.29\times10^{-4}$).}
+\label{fig:rms_mejores}
+\end{figure}
+
+\subsection{¿Por qué RMSProp evita mejor los puntos silla que GD?}
+\label{sec:silla}
+
+En un punto silla el gradiente es cero, y en su vecindad es pequeño en
+todas las direcciones. El paso de GD es proporcional al gradiente,
+$\alpha\nabla f$, así que cerca de un punto silla los pasos se vuelven
+diminutos y el algoritmo puede pasar muchas iteraciones en una meseta,
+aunque exista una dirección de curvatura negativa por la que podría
+descender \cite{dauphin2014identifying,goodfellow2016deep}.
+
+RMSProp divide cada componente del gradiente entre la raíz de su promedio
+reciente de cuadrados. Si el gradiente se reduce de forma sostenida, $s_t$
+también se reduce y el cociente $g_t/\sqrt{s_t+\epsilon}$ se mantiene del
+orden de 1: el tamaño del paso depende principalmente de $\alpha$ y no de la
+magnitud del gradiente. Además, la normalización es por coordenada, por lo
+que una dirección con gradiente pequeño (por ejemplo, la dirección de
+escape de la silla) recibe un paso relativamente mayor que en GD
+\cite{tieleman2012rmsprop,ruder2016overview}. En consecuencia, RMSProp
+atraviesa las regiones planas alrededor de los puntos silla en menos
+iteraciones.
+
+La evaluación contiene un caso que lo ilustra. La corrida 5 inicia en
+$(4.4551,\ 0.2191)$, cerca del punto silla $(3.385154,\ 0.073852)$ de $f_2$,
+cuyo valor es $13.311926$:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Algoritmo & Dist.\ mín. & $t$ & \multicolumn{7}{c}{$f_2(x_t)$} \\
+\cmidrule(lr){4-10}
+ & & & $t=0$ & $t=5$ & $t=10$ & $t=20$ & $t=30$ & $t=40$ & $t=50$ \\
+\midrule
+GD      & $0.043$ & 5 & $88.4406$ & $13.3026$ & $13.2850$ & $13.1924$ & $12.7921$ & $11.2136$ & $6.7753$ \\
+RMSProp & $0.659$ & 1 & $88.4406$ & $0.3466$  & $0.0170$  & $2.9322$  & $2.2754$  & $2.2485$  & $2.2541$ \\
+\bottomrule
+\end{tabular}
+\caption{Corrida 5 sobre $f_2$ con los mejores hiperparámetros: menor
+distancia de la trayectoria al punto silla, iteración en que ocurre y valor
+de $f_2$ en varias iteraciones.}
+\label{tab:silla}
+\end{table}
+
+GD llega a $0.043$ unidades del punto silla en $t=5$ y permanece con
+$f_2\approx13.3$, prácticamente el valor de la silla, hasta cerca de
+$t=20$; en 50 iteraciones no alcanza a converger. RMSProp, desde el mismo
+punto, pasa lejos de la silla y converge en 7 iteraciones. Es un solo caso
+y no un experimento controlado, pero es consistente con la explicación
+anterior.

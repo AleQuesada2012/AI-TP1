@@ -2,81 +2,218 @@
 
 \subsection{Formulación}
 
-El descenso del gradiente actualiza el punto actual en la dirección
-opuesta al gradiente:
+El descenso del gradiente (GD) actualiza el punto actual en la dirección
+opuesta al gradiente \cite{nocedal2006numerical,ruder2016overview}:
 \[
 x_{t+1} = x_t - \alpha \nabla f(x_t).
 \]
-El gradiente se calcula con \texttt{torch.autograd.grad}; la actualización
-se realiza fuera del grafo de autodiferenciación (\texttt{torch.no\_grad})
-para evitar acumular historial innecesario.
+La función \texttt{run\_gd(alpha, t, func, punto\_inicial)} del notebook
+trabaja con un tensor bidimensional en \texttt{float64}. En cada paso,
+\texttt{utils.valor\_y\_gradiente} evalúa $f(x_t)$ y obtiene $\nabla
+f(x_t)$ con \texttt{torch.autograd.grad}; la actualización se calcula de
+forma vectorial sobre las dos coordenadas y el nuevo punto se separa del
+grafo con \texttt{detach()} antes de volver a activar
+\texttt{requires\_grad}. Si el valor o el gradiente dejan de ser finitos se
+lanza un \texttt{ValueError} indicando divergencia. La función devuelve los
+historiales apilados de puntos y valores, de forma $(t+1,2)$ y $(t+1,)$,
+incluidos el punto inicial y el final. No se restringe la trayectoria al
+dominio: si un paso sale de $[-10,10]^2$, la sucesión continúa fuera.
 
-\subsection{Aplicación a cada función}
+\subsection{Demostración con tasas fijadas manualmente}
 \label{sec:gd_aplicacion}
 
-Partiendo de un punto aleatorio en $[-10,10]^2$ y ejecutando $P=25$
-iteraciones, se usó una tasa de aprendizaje distinta por función, ajustada
-manualmente para evitar divergencia:
+Antes de la calibración, se ejecutaron $P=25$ iteraciones desde un punto
+aleatorio por función, con una tasa de aprendizaje elegida manualmente:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrlrr}
+\toprule
+Función & $\alpha$ & Punto inicial & $f(x_0)$ & $f(x_{25})$ \\
+\midrule
+$f_0$ & $0.1$   & $(-7.6176,\ 0.0503)$  & $58.030396$   & $0.000828$ \\
+$f_1$ & $0.01$  & $(0.2365,\ 7.2000)$   & $14.279894$   & $12.557735$ \\
+$f_2$ & $0.002$ & $(-7.9473,\ -5.5343)$ & $2419.764335$ & $0.025753$ \\
+\bottomrule
+\end{tabular}
+\caption{Demostración de GD con 25 iteraciones. Los puntos iniciales se
+generan con \texttt{random.Random(2026)}.}
+\label{tab:gd_demo}
+\end{table}
 
 \begin{itemize}
-    \item $f_0$: $\alpha=0.1$.
-    \item $f_1$ (Ackley): $\alpha=0.01$.
-    \item $f_2$ (Himmelblau): $\alpha=0.002$. Esta función crece como un
-    polinomio de grado cuatro, por lo que su gradiente crece rápidamente
-    lejos de los mínimos: por ejemplo, en $(10,10)$ el gradiente es
-    aproximadamente $(4166, 4318)$. Con una tasa mayor, un solo paso puede
-    salir del dominio hacia una zona con un gradiente aún mayor y la
-    sucesión diverge.
+    \item En $f_0$, cada paso multiplica el punto por $1-2\alpha=0.8$, por
+    lo que el valor decrece geométricamente.
+    \item En $f_1$, el punto final es aproximadamente $(0,\ 6.98)$: GD quedó
+    en la cuenca de un mínimo local de Ackley, lejos del origen.
+    \item En $f_2$ se necesitó un paso menor. Esta función es un polinomio
+    de grado cuatro, así que su gradiente crece rápidamente lejos de los
+    mínimos: en $(10,10)$ vale aproximadamente $(4166,\ 4318)$ y, con
+    $\alpha=0.01$, un solo paso lleva a $(-31.66,\ -33.18)$, donde el
+    gradiente es todavía mayor. Con $\alpha=0.002$ la corrida terminó cerca
+    del mínimo $(-3.779310,\ -3.283186)$.
 \end{itemize}
 
-% TODO: Insertar aquí la curva de aprendizaje y la trayectoria
-% (plot_func_hist) de la corrida usada como ejemplo para cada función.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{curva-de-aprendizaje-de-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{trayectoria-de-gd-sobre-f2}
+\end{subfigure}
+\caption{Curvas de aprendizaje y trayectorias de la demostración de GD
+(Tabla~\ref{tab:gd_demo}).}
+\label{fig:gd_demo}
+\end{figure}
 
 \subsection{Calibración de hiperparámetros con Optuna}
 \label{sec:gd_optuna}
 
-% TODO: Actualizar esta subsección con la calibración actual del notebook.
-% Ahora Optuna ajusta solo alpha con 25 iteraciones fijas y minimiza el
-% promedio de f al final en los 6 puntos de ajuste, sin penalizaciones. El
-% texto y la tabla siguientes corresponden a una versión anterior (alpha e
-% iteraciones, con penalización); los valores vigentes están en la tabla
-% "Mejores hiperparámetros encontrados con Optuna" del notebook.
-
-Se calibraron $\alpha$ y la cantidad de iteraciones con Optuna
-(muestreador TPE, semilla fija), evaluando cada ensayo como el promedio de
-$f(x_{\text{final}})$ sobre 6 puntos iniciales fijos compartidos entre
-ensayos. Un ensayo se penaliza (score $=10^6$) si el algoritmo diverge o si
-la norma del gradiente final supera $10^{-3}$. Con 25 ensayos por función,
-los mejores resultados encontrados fueron:
+Para GD, Optuna ajusta solamente $\alpha$, muestreado en escala
+logarítmica; la cantidad de iteraciones no es un hiperparámetro y queda
+fija en 25. Los rangos de búsqueda fueron $[0.01,\ 0.49]$ para $f_0$,
+$[0.001,\ 0.5]$ para $f_1$ y $[0.0002,\ 0.04]$ para $f_2$. Cada ensayo
+ejecuta GD desde los 6 puntos de ajuste y Optuna minimiza el promedio de
+los 6 valores finales. En $f_2$, 9 de los 25 ensayos se podaron por
+divergencia.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{lrrr}
+\begin{tabular}{lrcrr}
 \toprule
-Función & Mejor $\alpha$ & Mejores iteraciones & Promedio $f(x_{\text{final}})$ \\
+Función & Mejor $\alpha$ & Convergencias & Iter.\ promedio & Promedio $f$ final \\
 \midrule
-$f_0$ & $0.456334$   & $80$  & $2.81\times10^{-168}$ \\
-$f_1$ & $0.00763728$ & $225$ & $13.30575$ \\
-$f_2$ & $0.00552217$ & $510$ & $1.459\times10^{-29}$ \\
+$f_0$ & $0.483072$ & 6/6 & $2.00$  & $2.21\times10^{-72}$ \\
+$f_1$ & $0.297839$ & 0/6 & ---     & $5.889887$ \\
+$f_2$ & $0.005492$ & 2/6 & $16.00$ & $15.046440$ \\
 \bottomrule
 \end{tabular}
-\caption{Mejores hiperparámetros de descenso del gradiente encontrados por
-Optuna, en 25 ensayos por función.}
+\caption{Mejores valores de $\alpha$ encontrados por Optuna para GD (25
+ensayos, 25 iteraciones, 6 puntos de ajuste). La última columna es el
+objetivo minimizado; las convergencias usan la tolerancia $10^{-3}$ y el
+promedio de iteraciones considera solo las corridas convergentes.}
+\label{tab:gd_optuna}
 \end{table}
 
-Nótese que Optuna pudo explorar cantidades de iteraciones mayores a
-$P=25$ (hasta 80, 225 y 510 según la función), por lo que estos valores no
-son directamente comparables con las corridas de 25 iteraciones de la
-sección anterior. En Ackley el promedio permanece lejos de cero porque los
-puntos iniciales fijos caen en cuencas de atracción de distintos mínimos
-locales.
+La Figura~\ref{fig:gd_optuna} muestra el proceso de calibración: el
+historial de optimización con el valor de cada ensayo y el mejor valor
+acumulado, y el efecto de $\alpha$ sobre el objetivo. En $f_0$, cualquier
+$\alpha$ cercano a $0.5$ es casi óptimo porque $x_{t+1}=(1-2\alpha)x_t$ y
+$\alpha=0.5$ lleva al mínimo en un solo paso. En $f_1$, el mejor $\alpha$
+es grande ($0.297839$): con pasos largos GD salta entre cuencas de Ackley
+en lugar de quedarse en el primer mínimo local, lo que reduce el promedio
+pero no alcanza la tolerancia en ningún punto de ajuste. En $f_2$ el
+compromiso es entre avanzar suficiente en 25 pasos y no divergir en las
+zonas empinadas.
 
-% TODO: Documentar el protocolo de 10 corridas (máximo 50 iteraciones), que
-% ya está ejecutado en la sección "Evaluación con los mejores
-% hiperparámetros" del notebook: tabla de convergencia por corrida, valor
-% promedio de la función minimizada e iteraciones promedio para converger.
-% TODO: Insertar la trayectoria (curvas de nivel) y la curva de aprendizaje
-% de la corrida con convergencia más rápida para cada función (sección
-% "Mejores corridas por velocidad de convergencia" del notebook).
-% TODO: Comparar formalmente contra RMSProp (punto 2f), ver
-% Sección~\ref{sec:comparacion}.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{historial-de-optimizacion-gd-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{efecto-de-hiperparametros-gd-sobre-f2}
+\end{subfigure}
+\caption{Proceso de calibración de GD con Optuna para $f_0$, $f_1$ y $f_2$
+(de arriba hacia abajo): historial de optimización (izquierda) y efecto de
+$\alpha$ con el mejor ensayo marcado (derecha).}
+\label{fig:gd_optuna}
+\end{figure}
+
+\subsection{Evaluación con los mejores hiperparámetros}
+
+Con los valores de la Tabla~\ref{tab:gd_optuna} se ejecutaron 10 corridas
+de 50 iteraciones desde los puntos compartidos. Las tablas por corrida
+están en la Sección~\ref{sec:evaluacion} (Tablas~\ref{tab:eval_f0},
+\ref{tab:eval_f1} y \ref{tab:eval_f2}) y el resumen en la
+Tabla~\ref{tab:resumen_eval}:
+
+\begin{itemize}
+    \item $f_0$: 10/10 corridas convergen, todas en 2 iteraciones; promedio
+    de $f$ minimizada $8.20\times10^{-5}$.
+    \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $5.9661$.
+    \item $f_2$: 9/10 corridas convergen con $23.78$ iteraciones en
+    promedio; promedio de $f$ minimizada $0.6781$. La corrida que no
+    converge (corrida 5) quedó detenida cerca de un punto silla
+    (Sección~\ref{sec:silla}).
+\end{itemize}
+
+\subsection{Mejor corrida por función}
+
+La corrida seleccionada es la convergente con menos iteraciones (empates
+por menor valor). Si ninguna converge, se muestra la de menor valor al
+completar 50 iteraciones. La trayectoria y la curva se muestran hasta la
+primera convergencia.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f0}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f1}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f1}
+\end{subfigure}
+
+\begin{subfigure}{0.40\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-gd-sobre-f2}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{evaluacion-curva-de-aprendizaje-de-gd-sobre-f2}
+\end{subfigure}
+\caption{Mejores corridas de GD. $f_0$: corrida 5, converge en 2
+iteraciones ($f=2.61\times10^{-5}$). $f_1$: corrida 4, no converge
+($f=3.234777$ al final). $f_2$: corrida 3, converge en 14 iteraciones
+($f=4.33\times10^{-4}$).}
+\label{fig:gd_mejores}
+\end{figure}
+
+En $f_1$ la trayectoria de la corrida 4 sale temporalmente del dominio
+(el borde punteado marca $[-10,10]^2$) y su curva de aprendizaje no es
+monótona: con $\alpha=0.297839$ los pasos son largos respecto al periodo
+de Ackley, por lo que GD salta entre cuencas y se acerca al origen sin
+llegar a asentarse en él.
