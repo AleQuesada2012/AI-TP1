@@ -56,13 +56,13 @@ calcula el gradiente de forma automática. Como verificación independiente
 de esos valores, a continuación se deriva cada gradiente de forma cerrada
 mediante la regla de la cadena.
 
-\subsubsection{$f_0(x,y)=x^2+y^2$}
+\subsubsection{\texorpdfstring{$f_0(x,y)=x^2+y^2$}{f0(x, y) = x² + y²}}
 Al ser una suma de potencias, sus derivadas parciales son inmediatas:
 \[
 \frac{\partial f_0}{\partial x} = 2x, \qquad \frac{\partial f_0}{\partial y} = 2y.
 \]
 
-\subsubsection{$f_1(x,y)$ (Ackley)}
+\subsubsection{\texorpdfstring{$f_1(x,y)$}{f1(x, y)} (Ackley)}
 
 Conviene separar $f_1$ en dos términos que dependen de $(x,y)$ y una
 constante:
@@ -129,7 +129,7 @@ global de Ackley señalada más adelante. Se verificó de forma
 independiente con WolframAlpha que ambas derivadas coinciden con esta
 forma cerrada.
 
-\subsubsection{$f_2(x,y)$ (Himmelblau)}
+\subsubsection{\texorpdfstring{$f_2(x,y)$}{f2(x, y)} (Himmelblau)}
 
 $f_2$ es la suma de dos términos al cuadrado; cada uno se deriva con la
 regla de la cadena $\frac{d}{dx}[(\cdot)^2]=2(\cdot)\cdot(\cdot)'$.
@@ -163,8 +163,9 @@ coinciden con esta forma cerrada.
 Los mínimos observados sobre la malla discreta (\texttt{torch.argmin}) son
 solo aproximaciones limitadas por su resolución. En este caso los tres
 mínimos coinciden con nodos de la malla: para $f_0$ y $f_1$ el mínimo
-muestreado se ubicó en $(0,0)$ y para $f_2$ en $(3,2)$, los tres con
-valor $0$. Como \texttt{torch.argmin} devuelve un solo índice,
+muestreado se ubicó en $(0,0)$ y para $f_2$ en $(3,2)$, con valores
+prácticamente nulos ($4.4\times10^{-14}$, $0$ y $2.3\times10^{-13}$,
+respectivamente, por redondeo de punto flotante). Como \texttt{torch.argmin} devuelve un solo índice,
 la malla muestra solo uno de los cuatro mínimos de $f_2$.
 
 Para refinar esas aproximaciones se calculó el gradiente y la Hessiana
@@ -180,12 +181,12 @@ estacionario se clasificó según el signo del determinante $D$ de la
 Hessiana: $D<0$ indica un punto silla; $D>0$ con $f_{xx}>0$ indica un
 mínimo local; $D>0$ con $f_{xx}<0$ indica un máximo local.
 
-\subsubsection{$f_0$}
+\subsubsection{\texorpdfstring{$f_0$}{f0}}
 $f_0$ tiene un único mínimo global en $(0,0)$, con valor $0$ y
 determinante de la Hessiana igual a $4$. Al ser una suma de cuadrados, no
 existen otros puntos críticos.
 
-\subsubsection{$f_1$ (Ackley)}
+\subsubsection{\texorpdfstring{$f_1$}{f1} (Ackley)}
 El mínimo global se ubica en $(0,0)$ con valor $0$; ese punto no es
 diferenciable en el sentido clásico por el término con raíz cuadrada, por
 lo que no se le aplicó la prueba de la Hessiana. Alrededor del origen se
@@ -201,7 +202,7 @@ suaves distintos del origen (verificado con un \texttt{assert} en el
 notebook). Este conteo es un resultado numérico, no una prueba analítica de
 exhaustividad.
 
-\subsubsection{$f_2$ (Himmelblau)}
+\subsubsection{\texorpdfstring{$f_2$}{f2} (Himmelblau)}
 Se encontraron 4 mínimos y 4 puntos silla (Tabla~\ref{tab:criticos_f2}).
 Como $f_2$ es una suma de cuadrados, $f_2\geq0$; los cuatro mínimos tienen
 valor $0$ y, por tanto, son mínimos globales.

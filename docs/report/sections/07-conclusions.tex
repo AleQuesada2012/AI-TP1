@@ -15,7 +15,8 @@
     punto silla que RMSProp evitó.
     \item En Ackley ningún método alcanzó la tolerancia. Los métodos basados
     en gradiente quedan atrapados en, o saltan entre, mínimos locales (GD
-    terminó en la cuenca del mínimo global en 1 de 10 corridas),
+    pasó por la cuenca del mínimo global en 8 de 10 corridas, pero no
+    terminó en ella en ninguna),
     mientras que PSO llegó a esa cuenca en las 10 corridas
     pero sin refinar la solución hasta $10^{-3}$.
     \item La calibración con Optuna dependió fuertemente de la función: el
@@ -47,9 +48,10 @@
     \item La calibración de GD sobre $f_1$ depende del entorno de ejecución:
     con pasos largos, GD es caótico en Ackley y diferencias numéricas
     mínimas entre versiones de las bibliotecas cambian el recorrido de
-    Optuna. En una ejecución anterior, en otro entorno, el mismo notebook
-    eligió $\alpha=0.297839$ en lugar de $0.208347$; las demás calibraciones
-    coincidieron.
+    Optuna. En una ejecución en otro entorno, el mismo notebook eligió
+    $\alpha=0.208347$ en lugar de $0.297839$; las demás calibraciones
+    coincidieron. Los resultados de este informe corresponden a la
+    ejecución oficial del notebook entregado.
 \end{itemize}
 
 \subsection{Trabajo futuro}

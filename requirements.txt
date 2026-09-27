@@ -1,13 +1,15 @@
-# Core notebook environment. Pin versions after validating them across the
-# operating systems used by the team.
+# Core notebook environment. Versions pinned from the environment used for the
+# official notebook run (Python 3.14.4).
+# jupyterlab, nbconvert and ipywidgets are not installed in that environment
+# (the notebook runs through PyCharm's ipykernel), so they remain unpinned.
 jupyterlab
-matplotlib
+matplotlib==3.11.2
 nbconvert
-numpy
+numpy==2.5.3
 # 3.0.6 is blocked by Windows 11 Smart App Control; 3.0.3 loads correctly.
 pandas==3.0.3
-torch
+torch==2.14.0
 ipywidgets
 # Hyperparameter calibration
-optuna
+optuna==5.0.0
 # wandb

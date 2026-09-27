@@ -204,8 +204,9 @@ coeficientes aleatorios se generan con
 PSO se acerca a la región del mínimo global en casi todas las corridas,
 pero rara vez alcanza la precisión de $10^{-3}$. La evolución por partícula
 de la mejor corrida sobre $f_2$ (Figura~\ref{fig:pso_particulas_f2})
-muestra por qué: aun en las últimas iteraciones las partículas oscilan con
-valores de $f$ de miles. Sin peso de inercia la velocidad acumula las
+muestra por qué: entre las iteraciones 40 y 50 la mediana de $f$ sobre las
+45 partículas se mantiene entre $59$ y $146$, y la partícula peor ubicada
+llega a valores de entre $1.2\times10^{3}$ y $7.7\times10^{4}$. Sin peso de inercia la velocidad acumula las
 atracciones de todas las iteraciones y no se amortigua, por lo que las
 partículas siguen sobrepasando el mejor global en lugar de refinarlo. El
 peso de inercia $w<1$ \cite{shi1998modified} o el factor de constricción
@@ -291,8 +292,9 @@ pero, sin peso de inercia, sus partículas siguen oscilando y no refinó la
 solución hasta $10^{-3}$ ni en $f_1$ ni en $f_2$
 (Sección~\ref{sec:evaluacion}). GD, en cambio, refina con rapidez cuando
 parte de la cuenca adecuada (converge en 2 iteraciones en $f_0$ y en 9 de
-10 corridas de $f_2$), pero depende del punto inicial: en $f_1$ solo 1 de
-sus 10 corridas terminó en la cuenca del mínimo global.
+10 corridas de $f_2$), pero depende del punto inicial y del paso: en $f_1$ ninguna de sus 10
+corridas terminó en la cuenca del mínimo global, aunque 8 pasaron por ella
+antes de que un paso largo las sacara.
 
 Hay varias formas de combinarlos:
 \begin{itemize}
