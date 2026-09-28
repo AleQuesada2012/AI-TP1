@@ -1,8 +1,7 @@
 \section{Introducción}
 
 Este informe documenta el Trabajo práctico 1 del curso de Principios de
-Inteligencia Artificial, cuyo enunciado se encuentra en
-\texttt{docs/assignment/TP\_1\_Optimizacion-1.pdf}. El trabajo consiste en
+Inteligencia Artificial. El trabajo consiste en
 implementar en PyTorch \cite{paszke2019pytorch} tres algoritmos de
 optimización (descenso del gradiente, RMSProp y enjambre de partículas) y
 compararlos sobre tres funciones de prueba:
@@ -18,12 +17,11 @@ la calibración de hiperparámetros usan $P=25$ iteraciones; la evaluación
 final usa un máximo de 50 iteraciones, como pide el enunciado. Todos los
 puntos iniciales se muestrean uniformemente en $[-10,10]^2$.
 
-La implementación completa vive en el notebook autocontenido
-\texttt{notebooks/tp1\_optimizacion.ipynb}, apoyado por el módulo
-\texttt{notebooks/utils.py} con las funciones de análisis, visualización y
-presentación de tablas. Todos los números, tablas y figuras de este informe
-provienen de una ejecución completa del notebook desde un kernel limpio, y
-las figuras se exportan automáticamente a \texttt{results/figures/}.
+La implementación se presenta en el notebook principal, acompañado por el
+módulo auxiliar \texttt{utils.py}, que reúne las funciones de análisis,
+visualización y presentación de tablas. Todos los números, tablas y figuras
+de este informe provienen de una ejecución completa del notebook desde un
+kernel limpio; las figuras se exportan automáticamente durante esa ejecución.
 
 \subsection{Protocolo común}
 

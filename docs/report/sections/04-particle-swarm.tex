@@ -1,22 +1,31 @@
 \section{Enjambre de partículas}
 \label{sec:pso}
 
-\subsection{Formulación}
+\subsection{Fundamentos teóricos}
 
 La optimización por enjambre de partículas (PSO) \cite{kennedy1995particle}
 mantiene $n$ soluciones candidatas (partículas) con posición $x_i$ y
 velocidad $v_i$. Cada partícula recuerda su mejor posición personal $p_i$ y
-el enjambre comparte la mejor posición global $g$. La implementación
-\texttt{run\_pso(T, c1, c2, func, punto\_inicial, n\_particulas)} usa la
-forma original, sin peso de inercia:
+el enjambre comparte la mejor posición global $g$. A partir de esas dos
+referencias, cada partícula combina su movimiento previo con una atracción
+cognitiva y otra social \cite{shi1998modified}:
 \[
-v_i \leftarrow v_i + c_1 r_1 \odot (p_i - x_i) + c_2 r_2 \odot (g - x_i),
-\qquad
-x_i \leftarrow x_i + v_i,
+v_i^{t+1} = wv_i^t + c_1 r_{1,i}^t \odot (p_i^t - x_i^t)
+             + c_2 r_{2,i}^t \odot (g^t - x_i^t), \qquad
+x_i^{t+1} = x_i^t + v_i^{t+1},
 \]
-donde $r_1,r_2\sim U[0,1)$ se sortean por partícula, por coordenada y por
-iteración; $c_1$ pondera el componente cognitivo y $c_2$ el social. PSO no
-usa gradientes, solo evaluaciones de $f$.
+donde los vectores aleatorios $r_{1,i}^t,r_{2,i}^t$ tienen componentes
+uniformes en $[0,1)$, $w$ controla la persistencia de la velocidad, $c_1$
+pondera la experiencia propia y $c_2$ la información compartida. Tras
+evaluar $f$ se actualizan los mejores personales y el mejor global. Así,
+PSO explora con varias candidatas sin requerir derivadas de $f$.
+
+\subsection{Formulación de la solución}
+
+La función \texttt{run\_pso(T, c1, c2, func, initial\_point,
+n\_particles)} fija $w=1$: conserva la velocidad anterior sin
+amortiguarla. Los vectores $r_1$ y $r_2$ se sortean de forma independiente
+por partícula, coordenada e iteración.
 
 Detalles de la implementación:
 \begin{itemize}
@@ -24,8 +33,8 @@ Detalles de la implementación:
     posiciones, velocidades, mejores personales y números aleatorios se
     actualizan con operaciones vectoriales, $f$ se evalúa para todas las
     partículas a la vez sobre \texttt{x.T}, y la actualización de los
-    mejores personales usa una máscara booleana (\texttt{valores <
-    mejores\_valores}), sin ciclos sobre las partículas.
+    mejores personales usa una máscara booleana (\texttt{numeric\_values <
+    personal\_best\_values}), sin ciclos sobre las partículas.
     \item Las posiciones iniciales son uniformes en $[-10,10]^2$, salvo la
     primera partícula, que se coloca en el punto inicial compartido con GD y
     RMSProp. Las velocidades iniciales son uniformes en $[0,1)^2$.
@@ -104,7 +113,7 @@ Función & Mejor $c_1$ & Mejor $c_2$ & Mejor $n$ & Convergencias & Iter.\ promed
 \midrule
 $f_0$ & $1.444168$ & $0.173357$ & 43 & 3/6 & $12.33$ & $0.002467$ \\
 $f_1$ & $1.073939$ & $0.214430$ & 42 & 0/6 & ---     & $0.240168$ \\
-$f_2$ & $0.443200$ & $0.080573$ & 45 & 0/6 & ---     & $0.081342$ \\
+$f_2$ & $0.817677$ & $0.772406$ & 36 & 0/6 & ---     & $0.100462$ \\
 \bottomrule
 \end{tabular}
 \caption{Mejores hiperparámetros de PSO encontrados por Optuna (25
@@ -112,10 +121,10 @@ ensayos, 25 iteraciones, 6 puntos de ajuste).}
 \label{tab:pso_optuna}
 \end{table}
 
-En las tres funciones Optuna prefirió $c_2$ pequeño y $c_1$ mayor, es decir,
-dar más peso a la memoria de cada partícula que a la atracción hacia el
-mejor global, y una cantidad de partículas cercana al máximo del rango
-(Figura~\ref{fig:pso_optuna}).
+En las tres funciones Optuna eligió $c_1>c_2$: en $f_0$ y $f_1$ el
+componente social fue pequeño, mientras que en $f_2$ ambos pesos fueron
+similares. La cantidad elegida fue de 43, 42 y 36 partículas,
+respectivamente (Figura~\ref{fig:pso_optuna}).
 
 \begin{figure}[H]
 \centering
@@ -160,7 +169,7 @@ Tabla~\ref{tab:pso_optuna} y las mismas semillas del objetivo
 (Figura~\ref{fig:pso_curvas_calibracion}). Cada curva es el mejor valor
 global por iteración y la curva negra es su promedio, cuyo último valor
 coincide con el mejor valor de Optuna: $0.002467$, $0.240168$ y
-$0.081342$.
+$0.100462$.
 
 \begin{figure}[H]
 \centering
@@ -176,7 +185,7 @@ $0.081342$.
 
 \begin{subfigure}{0.70\linewidth}
 \includegraphics[width=\linewidth]{curvas-de-aprendizaje-de-pso-con-los-mejores-hiperparametros-sobre-f2}
-\caption{$f_2$, $c_1=0.443200$, $c_2=0.080573$, $n=45$.}
+\caption{$f_2$, $c_1=0.817677$, $c_2=0.772406$, $n=36$.}
 \end{subfigure}
 \caption{Curvas de aprendizaje de PSO con los mejores hiperparámetros sobre
 los 6 puntos de ajuste, para $f_0$, $f_1$ y $f_2$.}
@@ -197,7 +206,7 @@ coeficientes aleatorios se generan con
     promedio; promedio de $f$ minimizada $0.0018$.
     \item $f_1$: 0/10 corridas convergen; promedio de $f$ final $0.1497$,
     el menor de los tres algoritmos.
-    \item $f_2$: 0/10 corridas convergen; promedio de $f$ final $0.0736$,
+    \item $f_2$: 0/10 corridas convergen; promedio de $f$ final $0.2643$,
     también el menor de los tres algoritmos.
 \end{itemize}
 
@@ -205,8 +214,9 @@ PSO se acerca a la región del mínimo global en casi todas las corridas,
 pero rara vez alcanza la precisión de $10^{-3}$. La evolución por partícula
 de la mejor corrida sobre $f_2$ (Figura~\ref{fig:pso_particulas_f2})
 muestra por qué: entre las iteraciones 40 y 50 la mediana de $f$ sobre las
-45 partículas se mantiene entre $59$ y $146$, y la partícula peor ubicada
-llega a valores de entre $1.2\times10^{3}$ y $7.7\times10^{4}$. Sin peso de inercia la velocidad acumula las
+36 partículas se mantiene entre $3.74\times10^3$ y $1.75\times10^4$,
+y la partícula peor ubicada alcanza valores entre $5.82\times10^7$ y
+$4.19\times10^9$. Sin peso de inercia la velocidad acumula las
 atracciones de todas las iteraciones y no se amortigua, por lo que las
 partículas siguen sobrepasando el mejor global en lugar de refinarlo. El
 peso de inercia $w<1$ \cite{shi1998modified} o el factor de constricción
@@ -243,8 +253,8 @@ mejor valor global (Figura~\ref{fig:pso_mejores}).
 \end{subfigure}
 
 \begin{subfigure}{0.36\linewidth}
-\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f2-particula-26}
-\caption{Trayectoria en $f_2$ (corrida 8, partícula 26).}
+\includegraphics[width=\linewidth]{evaluacion-mejor-trayectoria-de-pso-sobre-f2-particula-18}
+\caption{Trayectoria en $f_2$ (corrida 3, partícula 18).}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.49\linewidth}
@@ -254,8 +264,8 @@ mejor valor global (Figura~\ref{fig:pso_mejores}).
 \caption{Mejores corridas de PSO. $f_0$: corrida 1, converge en 32
 iteraciones ($f=3.58\times10^{-4}$, partícula 27 de 43). $f_1$: corrida 2,
 no converge ($f=0.019854$, alcanzado por la partícula 3 de 42 en la
-iteración 22). $f_2$: corrida 8, no converge ($f=0.009512$, alcanzado por la
-partícula 26 de 45 en la iteración 34).}
+iteración 22). $f_2$: corrida 3, no converge ($f=0.047116$, alcanzado por la
+partícula 18 de 36 en la iteración 33).}
 \label{fig:pso_mejores}
 \end{figure}
 
@@ -267,14 +277,13 @@ partícula 26 de 45 en la iteración 34).}
 \end{subfigure}
 
 \begin{subfigure}{0.85\linewidth}
-\includegraphics[width=\linewidth]{evaluacion-particula-mas-cercana-al-minimo-de-pso-sobre-f2-particula-26}
-\caption{Partícula 26.}
+\includegraphics[width=\linewidth]{evaluacion-particula-mas-cercana-al-minimo-de-pso-sobre-f2-particula-18}
+\caption{Partícula 18.}
 \end{subfigure}
 \caption{Mejor corrida de PSO sobre $f_2$: evolución de $f$ en las
-partículas 1 a 10 (arriba) y en la partícula 26, que alcanzó el valor más
-cercano al mínimo (abajo). Las gráficas del resto de partículas y de $f_0$
-y $f_1$ están en \texttt{results/figures/} con el prefijo
-\texttt{evaluacion-evolucion-de-f-en-cada-particula}.}
+partículas 1 a 10 (arriba) y en la partícula 18, que alcanzó el valor más
+cercano al mínimo (abajo). El notebook también presenta los restantes
+grupos de partículas de $f_0$, $f_1$ y $f_2$.}
 \label{fig:pso_particulas_f2}
 \end{figure}
 
@@ -292,9 +301,9 @@ pero, sin peso de inercia, sus partículas siguen oscilando y no refinó la
 solución hasta $10^{-3}$ ni en $f_1$ ni en $f_2$
 (Sección~\ref{sec:evaluacion}). GD, en cambio, refina con rapidez cuando
 parte de la cuenca adecuada (converge en 2 iteraciones en $f_0$ y en 9 de
-10 corridas de $f_2$), pero depende del punto inicial y del paso: en $f_1$ ninguna de sus 10
-corridas terminó en la cuenca del mínimo global, aunque 8 pasaron por ella
-antes de que un paso largo las sacara.
+10 corridas de $f_2$), pero depende del punto inicial y del paso: en $f_1$
+ninguna de sus 10 corridas convergió, aunque 7 alcanzaron temporalmente un
+valor inferior al menor mínimo local suave antes de volver a alejarse.
 
 Hay varias formas de combinarlos:
 \begin{itemize}
@@ -324,13 +333,13 @@ Beneficios esperados:
     multimodales como Ackley \cite{kennedy1995particle}, y GD aporta la
     convergencia rápida cerca de un mínimo \cite{nocedal2006numerical} que
     PSO sin inercia no logra. En $f_2$, el mejor global de PSO terminó
-    siempre con $f\leq0.2124$, por debajo del punto silla de menor valor
+    siempre con $f\leq0.6862$, por debajo del punto silla de menor valor
     ($13.3119$, Tabla~\ref{tab:criticos_f2}); por tanto, cada mejor global
     está en la cuenca de uno de los cuatro mínimos, donde GD con un paso
     adecuado converge a él.
     \item \textbf{Menos iteraciones del enjambre.} Si GD se encarga del
     refinamiento, PSO no necesita esperar a que las partículas se contraigan,
-    lo que ahorra iteraciones que en la evaluación costaron entre 42 y 45
+    lo que ahorra iteraciones que en la evaluación costaron entre 36 y 43
     evaluaciones de $f$ cada una.
     \item \textbf{Robustez ante puntos silla.} Las partículas no se detienen
     en regiones de gradiente pequeño, así que el enjambre puede sacar a GD

@@ -1,3 +1,4 @@
+import hashlib
 import math
 import numbers
 import random
@@ -17,58 +18,52 @@ from matplotlib import patheffects
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullLocator
 
-_directorio_figuras = None
-_prefijo_figuras = ""
-_nombres_figuras = set()
+_figures_directory = None
+_figures_prefix = ""
 
 
-def configurar_exportacion_figuras(directorio):
+def configure_figure_export(directory):
     """!
     @brief Activa el guardado en PNG de cada figura que se muestre en el notebook.
-    @param directorio Carpeta de destino; se crea si no existe y se eliminan sus PNG previos.
+    @param directory Carpeta de destino; se crea si no existe y se eliminan sus PNG previos.
     @return Ruta absoluta de la carpeta de destino.
     """
-    global _directorio_figuras
+    global _figures_directory
     # Se parte del estilo por omisión para que el tema del IDE (p. ej. texto blanco del
     # modo oscuro de PyCharm) no llegue a las figuras del informe.
     matplotlib.rcdefaults()
-    _directorio_figuras = Path(directorio).resolve()
-    _directorio_figuras.mkdir(parents=True, exist_ok=True)
-    for archivo in _directorio_figuras.glob("*.png"):
-        archivo.unlink()
-    _nombres_figuras.clear()
-    return _directorio_figuras
+    _figures_directory = Path(directory).resolve()
+    _figures_directory.mkdir(parents=True, exist_ok=True)
+    for file in _figures_directory.glob("*.png"):
+        file.unlink()
+    return _figures_directory
 
 
-def _nombre_archivo_figura(figure):
+def _figure_filename(figure):
     """!
     @brief Construye un nombre de archivo estable a partir del título de la figura.
     @param figure Figura de Matplotlib que se va a guardar.
     @return Nombre sin extensión, en minúsculas, ASCII y separado por guiones.
     """
-    titulo = figure._suptitle.get_text() if figure._suptitle is not None else ""
-    if not titulo:
-        titulo = next((axis.get_title() for axis in figure.axes if axis.get_title()), "figura")
-    titulo = f"{_prefijo_figuras} {titulo.splitlines()[0]}".replace("–", "-")
-    titulo = unicodedata.normalize("NFKD", titulo).encode("ascii", "ignore").decode()
-    base = re.sub(r"[^a-z0-9]+", "-", re.sub(r"[$_{}\\]", "", titulo.lower())).strip("-")
+    title_text = figure._suptitle.get_text() if figure._suptitle is not None else ""
+    if not title_text:
+        title_text = next((axis.get_title() for axis in figure.axes if axis.get_title()), "figura")
+    title_text = f"{_figures_prefix} {title_text.splitlines()[0]}".replace("–", "-")
+    title_text = unicodedata.normalize("NFKD", title_text).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^a-z0-9]+", "-", re.sub(r"[$_{}\\]", "", title_text.lower())).strip("-")
 
-    nombre, copia = base, 2
-    while nombre in _nombres_figuras:
-        nombre, copia = f"{base}-{copia}", copia + 1
-    _nombres_figuras.add(nombre)
-    return nombre
+    return base
 
 
-def _mostrar_figura(figure):
+def _show_figure(figure):
     """!
     @brief Guarda la figura si la exportación está activa y luego la muestra.
     @param figure Figura de Matplotlib ya terminada.
     @return None.
     """
-    if _directorio_figuras is not None:
-        ruta = _directorio_figuras / f"{_nombre_archivo_figura(figure)}.png"
-        figure.savefig(ruta, dpi=150, bbox_inches="tight", facecolor="white")
+    if _figures_directory is not None:
+        output_path = _figures_directory / f"{_figure_filename(figure)}.png"
+        figure.savefig(output_path, dpi=150, bbox_inches="tight", facecolor="white")
     plt.show()
 
 
@@ -102,7 +97,7 @@ def _points_as_tensor(points):
     return points_tensor
 
 
-def _graficar_minimos(axis, minima, local_minima):
+def _plot_minima(axis, minima, local_minima):
     """!
     @brief Dibuja los mínimos globales y locales conocidos sobre unos ejes.
     @param axis Eje de Matplotlib donde se agregan los marcadores.
@@ -141,59 +136,64 @@ def _graficar_minimos(axis, minima, local_minima):
         )
 
 
-def _titulo_con_hiperparametros(title, hiperparametros):
+def _title_with_hyperparameters(title, hyperparameters):
     """!
     @brief Agrega al título una línea con los hiperparámetros usados.
     @param title Título principal de la gráfica.
-    @param hiperparametros Diccionario opcional con nombre y valor de cada hiperparámetro.
+    @param hyperparameters Diccionario opcional con nombre y valor de cada hiperparámetro.
     @return Título con el subtítulo de hiperparámetros, si se proporcionaron.
     """
-    if not hiperparametros:
+    if not hyperparameters:
         return title
 
     # Los enteros, como la cantidad de partículas, se muestran sin decimales.
-    texto_hiperparametros = ", ".join(
-        f"{nombre}={valor}" if isinstance(valor, numbers.Integral) else f"{nombre}={valor:.5f}"
-        for nombre, valor in hiperparametros.items()
-    )
-    return f"{title}\n{texto_hiperparametros}"
+    formatted_parameters = []
+    for name, scalar_value in hyperparameters.items():
+        display_name = "partículas" if name == "n_particles" else name
+        formatted_parameters.append(
+            f"{display_name}={scalar_value}"
+            if isinstance(scalar_value, numbers.Integral)
+            else f"{display_name}={scalar_value:.5f}"
+        )
+    hyperparameter_text = ", ".join(formatted_parameters)
+    return f"{title}\n{hyperparameter_text}"
 
 
-def _estilo_particula(indice_particula):
+def _particle_style(particle_index):
     """!
     @brief Devuelve el color, el trazo y el marcador asignados a una partícula.
-    @param indice_particula Índice de la partícula dentro del enjambre.
+    @param particle_index Índice de la partícula dentro del enjambre.
     @return Tupla con color, estilo de línea y marcador.
     """
     # Después de diez partículas los colores se repiten y cambian el trazo y el marcador;
     # los cinco estilos distinguen hasta 50 partículas. La paleta fija evita que el estilo
     # activo de Matplotlib (Optuna aplica ggplot) repita colores antes de la décima.
-    estilos = [
+    styles = [
         ("--", "o"),
         ("-.", "s"),
         (":", "^"),
         ("-", "D"),
         ((0, (5, 1, 1, 1, 1, 1)), "v"),
     ]
-    color = matplotlib.colormaps["tab10"].colors[indice_particula % 10]
-    estilo_linea, marcador = estilos[(indice_particula // 10) % len(estilos)]
-    return color, estilo_linea, marcador
+    color = matplotlib.colormaps["tab10"].colors[particle_index % 10]
+    line_style, marker_style = styles[(particle_index // 10) % len(styles)]
+    return color, line_style, marker_style
 
 
-def _leyenda_exterior(figure, axis, filas_maximas=25):
+def _outside_legend(figure, axis, max_rows=25):
     """!
     @brief Coloca la leyenda a la derecha de la figura y la reparte en columnas si es larga.
     @param figure Figura de Matplotlib que recibe la leyenda.
     @param axis Eje cuyos elementos con etiqueta forman la leyenda.
-    @param filas_maximas Filas por columna antes de agregar otra columna.
+    @param max_rows Filas por columna antes de agregar otra columna.
     @return None.
     """
-    cantidad_entradas = len(axis.get_legend_handles_labels()[1])
-    columnas = max(1, math.ceil(cantidad_entradas / filas_maximas))
+    entry_count = len(axis.get_legend_handles_labels()[1])
+    columns = max(1, math.ceil(entry_count / max_rows))
     figure.legend(
         loc="outside right upper",
-        ncols=columnas,
-        fontsize="small" if columnas > 1 else "medium",
+        ncols=columns,
+        fontsize="small" if columns > 1 else "medium",
     )
 
 
@@ -294,7 +294,7 @@ def plot_critical_points(
     axis.set_ylabel("y")
     axis.set_aspect("equal", adjustable="box")
     axis.legend()
-    _mostrar_figura(figure)
+    _show_figure(figure)
 
 
 def plot_learning_curve(function_values, title="Curva de aprendizaje"):
@@ -343,12 +343,12 @@ def plot_learning_curve(function_values, title="Curva de aprendizaje"):
 
     # La escala lineal aplana el tramo final cuando las primeras iteraciones
     # son varios órdenes de magnitud mayores que las últimas.
-    magnitudes = np.abs(plot_values[plot_values != 0])
-    if magnitudes.size and magnitudes.max() / magnitudes.min() >= 100:
+    absolute_values = np.abs(plot_values[plot_values != 0])
+    if absolute_values.size and absolute_values.max() / absolute_values.min() >= 100:
         if np.all(plot_values > 0):
             axis.set_yscale("log")
         else:
-            axis.set_yscale("symlog", linthresh=max(float(magnitudes.min()), 1e-8))
+            axis.set_yscale("symlog", linthresh=max(float(absolute_values.min()), 1e-8))
         axis.set_ylabel(r"$f(x_t)$ (escala logarítmica)")
     else:
         axis.set_ylabel(r"$f(x_t)$")
@@ -358,7 +358,7 @@ def plot_learning_curve(function_values, title="Curva de aprendizaje"):
     axis.grid(alpha=0.3)
     axis.legend()
     figure.tight_layout()
-    _mostrar_figura(figure)
+    _show_figure(figure)
     return figure, axis
 
 
@@ -390,40 +390,40 @@ def plot_func_hist(
     if path is None or path.shape[0] == 0:
         raise ValueError("El historial de puntos no puede estar vacío.")
 
-    limites_originales_x = (float(x_values.min()), float(x_values.max()))
-    limites_originales_y = (float(y_values.min()), float(y_values.max()))
-    x_values_originales = x_values
-    y_values_originales = y_values
-    puntos_visibles = [path.numpy()]
-    for puntos_conocidos in (minima, local_minima):
-        tensor_puntos = _points_as_tensor(puntos_conocidos)
-        if tensor_puntos is not None:
-            puntos_visibles.append(tensor_puntos.numpy())
-    puntos_visibles = np.concatenate(puntos_visibles)
+    original_x_limits = (float(x_values.min()), float(x_values.max()))
+    original_y_limits = (float(y_values.min()), float(y_values.max()))
+    original_x_values = x_values
+    original_y_values = y_values
+    visible_points = [path.numpy()]
+    for known_points in (minima, local_minima):
+        point_tensor = _points_as_tensor(known_points)
+        if point_tensor is not None:
+            visible_points.append(point_tensor.numpy())
+    visible_points = np.concatenate(visible_points)
 
-    limite_x_inferior = min(limites_originales_x[0], float(puntos_visibles[:, 0].min()))
-    limite_x_superior = max(limites_originales_x[1], float(puntos_visibles[:, 0].max()))
-    limite_y_inferior = min(limites_originales_y[0], float(puntos_visibles[:, 1].min()))
-    limite_y_superior = max(limites_originales_y[1], float(puntos_visibles[:, 1].max()))
-    malla_ampliada = view_limits is None and (
-        limite_x_inferior < limites_originales_x[0]
-        or limite_x_superior > limites_originales_x[1]
-        or limite_y_inferior < limites_originales_y[0]
-        or limite_y_superior > limites_originales_y[1]
+    x_lower_bound = min(original_x_limits[0], float(visible_points[:, 0].min()))
+    x_upper_bound = max(original_x_limits[1], float(visible_points[:, 0].max()))
+    y_lower_bound = min(original_y_limits[0], float(visible_points[:, 1].min()))
+    y_upper_bound = max(original_y_limits[1], float(visible_points[:, 1].max()))
+    expanded_grid = view_limits is None and (
+        x_lower_bound < original_x_limits[0]
+        or x_upper_bound > original_x_limits[1]
+        or y_lower_bound < original_y_limits[0]
+        or y_upper_bound > original_y_limits[1]
     )
-    if malla_ampliada:
+    if expanded_grid:
         # El margen depende del recorrido; se conserva la cantidad original de muestras.
-        margen_x = 0.05 * (limite_x_superior - limite_x_inferior)
-        margen_y = 0.05 * (limite_y_superior - limite_y_inferior)
+        x_padding = 0.05 * (x_upper_bound - x_lower_bound)
+        y_padding = 0.05 * (y_upper_bound - y_lower_bound)
         x_values = torch.linspace(
-            limite_x_inferior - margen_x,
-            limite_x_superior + margen_x,
+            x_lower_bound - x_padding,
+            x_upper_bound + x_padding,
             x_values.numel(),
             dtype=x_values.dtype,
         )
         y_values = torch.linspace(
-            limite_y_inferior - margen_y,
-            limite_y_superior + margen_y,
+            y_lower_bound - y_padding,
+            y_upper_bound + y_padding,
             y_values.numel(),
             dtype=y_values.dtype,
         )
@@ -431,46 +431,46 @@ def plot_func_hist(
     X1, X2 = torch.meshgrid(x_values, y_values, indexing="ij")
     with torch.no_grad():
         values = func(torch.stack((X1, X2)))
-        if malla_ampliada:
+        if expanded_grid:
             X1_original, X2_original = torch.meshgrid(
-                x_values_originales, y_values_originales, indexing="ij"
+                original_x_values, original_y_values, indexing="ij"
             )
-            valores_originales = func(torch.stack((X1_original, X2_original)))
+            original_values = func(torch.stack((X1_original, X2_original)))
 
     # El cambio de escala hace visibles los valles sin modificar la trayectoria.
-    valor_minimo = values.min()
-    niveles = 50
+    minimum_value = values.min()
+    levels = 50
     extension = "neither"
-    if malla_ampliada:
-        valor_minimo = torch.minimum(valor_minimo, valores_originales.min())
+    if expanded_grid:
+        minimum_value = torch.minimum(minimum_value, original_values.min())
         # La escala conserva el contraste del dominio de referencia aunque
         # aparezcan valores mayores en la zona nueva.
-        maximo_referencia = torch.log1p(
-            (valores_originales - valor_minimo).clamp_min(0)
+        reference_max = torch.log1p(
+            (original_values - minimum_value).clamp_min(0)
         ).max().item()
-        if maximo_referencia > 0:
-            niveles = np.linspace(0, maximo_referencia, 51)
+        if reference_max > 0:
+            levels = np.linspace(0, reference_max, 51)
             extension = "max"
-    color_values = torch.log1p((values - valor_minimo).clamp_min(0))
+    color_values = torch.log1p((values - minimum_value).clamp_min(0))
 
     figure, axis = plt.subplots(figsize=(8, 6.5))
     contours = axis.contourf(
         X1.numpy(),
         X2.numpy(),
         color_values.detach().cpu().numpy(),
-        levels=niveles,
+        levels=levels,
         cmap="viridis",
         extend=extension,
     )
     colorbar = figure.colorbar(contours, ax=axis)
     colorbar.set_label(r"$\log(1 + f(x,y) - f_{min})$")
 
-    if malla_ampliada:
+    if expanded_grid:
         axis.add_patch(
             Rectangle(
-                (limites_originales_x[0], limites_originales_y[0]),
-                limites_originales_x[1] - limites_originales_x[0],
-                limites_originales_y[1] - limites_originales_y[0],
+                (original_x_limits[0], original_y_limits[0]),
+                original_x_limits[1] - original_x_limits[0],
+                original_y_limits[1] - original_y_limits[0],
                 fill=False,
                 edgecolor="black",
                 linestyle="--",
@@ -519,7 +519,7 @@ def plot_func_hist(
         zorder=7,
     )
 
-    _graficar_minimos(axis, minima, local_minima)
+    _plot_minima(axis, minima, local_minima)
 
     if view_limits is not None:
         axis.set_xlim(view_limits)
@@ -535,34 +535,34 @@ def plot_func_hist(
     axis.grid(alpha=0.2)
     axis.legend(loc="best")
     figure.tight_layout()
-    _mostrar_figura(figure)
+    _show_figure(figure)
     return figure, axis
 
 
-def plot_historial_pso(
+def plot_pso_history(
     func,
-    enjambre_hist,
+    swarm_history,
     title,
     minima,
-    tolerancia=1e-3,
-    hiperparametros=None,
-    particulas=None,
-    resaltar_minimo=False,
+    tolerance=1e-3,
+    hyperparameters=None,
+    particles=None,
+    highlight_minimum=False,
 ):
     """!
     @brief Grafica en escala lineal las partículas de PSO seleccionadas.
     @param func Función que recibe un tensor con las coordenadas x e y.
-    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param swarm_history Posiciones de todas las partículas, con forma (T+1, n, 2).
     @param title Título de la gráfica.
     @param minima Uno o varios mínimos globales calculados para la función.
-    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
-    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
-    @param particulas Índices opcionales de las partículas graficadas; por omisión, todas.
-    @param resaltar_minimo Si es True, marca el menor valor de las partículas graficadas.
+    @param tolerance Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hyperparameters Diccionario opcional con los hiperparámetros del subtítulo.
+    @param particles Índices opcionales de las partículas graficadas; por omisión, todas.
+    @param highlight_minimum Si es True, marca el menor valor de las partículas graficadas.
     @return La figura y sus ejes para permitir ajustes posteriores.
     """
-    enjambre = torch.as_tensor(enjambre_hist).detach().cpu()
-    if enjambre.ndim != 3 or enjambre.shape[2] != 2:
+    swarm = torch.as_tensor(swarm_history).detach().cpu()
+    if swarm.ndim != 3 or swarm.shape[2] != 2:
         raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2).")
     minima_tensor = _points_as_tensor(minima)
     if minima_tensor is None:
@@ -570,254 +570,255 @@ def plot_historial_pso(
 
     # El mínimo global se evalúa en los mínimos calculados, no se asume igual a 0.
     with torch.no_grad():
-        valores = func(enjambre.permute(2, 0, 1))
-        valor_minimo = func(minima_tensor.T).min().item()
-    if not torch.isfinite(valores).all():
+        numeric_values = func(swarm.permute(2, 0, 1))
+        minimum_value = func(minima_tensor.T).min().item()
+    if not torch.isfinite(numeric_values).all():
         raise ValueError("El historial contiene NaN o infinito; PSO pudo divergir.")
 
-    valores = valores.numpy()
-    posiciones = enjambre.numpy()
-    n_iteraciones, n_particulas = valores.shape
-    indices = list(range(n_particulas)) if particulas is None else list(particulas)
-    iteraciones = np.arange(n_iteraciones)
-    valor_convergencia = valor_minimo + tolerancia
+    numeric_values = numeric_values.numpy()
+    positions = swarm.numpy()
+    iteration_count, n_particles = numeric_values.shape
+    indices = list(range(n_particles)) if particles is None else list(particles)
+    iterations = np.arange(iteration_count)
+    convergence_value = minimum_value + tolerance
 
     figure, axis = plt.subplots(
         figsize=(13, 6) if len(indices) > 1 else (12, 6),
         layout="constrained",
     )
     axis.axhline(
-        valor_convergencia,
+        convergence_value,
         color="darkred",
         linestyle=":",
         linewidth=1.5,
-        label=f"Convergencia = {valor_convergencia:g}",
+        label=f"Convergencia = {convergence_value:g}",
         zorder=4,
     )
 
     # Cada partícula conserva su color y trazo aunque solo se grafique una parte del enjambre.
-    intervalo_marcadores = max(1, n_iteraciones // 12)
-    for indice_particula in indices:
-        color, estilo_linea, marcador = _estilo_particula(indice_particula)
-        x_0, y_0 = posiciones[0, indice_particula]
+    marker_interval = max(1, iteration_count // 12)
+    for particle_index in indices:
+        color, line_style, marker_style = _particle_style(particle_index)
+        x_0, y_0 = positions[0, particle_index]
         axis.plot(
-            iteraciones,
-            valores[:, indice_particula],
+            iterations,
+            numeric_values[:, particle_index],
             color=color,
-            linestyle=estilo_linea,
-            marker=marcador,
-            markevery=intervalo_marcadores,
+            linestyle=line_style,
+            marker=marker_style,
+            markevery=marker_interval,
             markersize=3,
             linewidth=1.3,
             alpha=0.8,
-            label=f"Partícula {indice_particula + 1}: ({x_0:.2f}, {y_0:.2f})",
+            label=f"Partícula {particle_index + 1}: ({x_0:.2f}, {y_0:.2f})",
         )
 
-    if resaltar_minimo:
-        valores_graficados = valores[:, indices]
-        iteracion, columna = np.unravel_index(
-            np.argmin(valores_graficados),
-            valores_graficados.shape,
+    if highlight_minimum:
+        plotted_values = numeric_values[:, indices]
+        iteration, column_name = np.unravel_index(
+            np.argmin(plotted_values),
+            plotted_values.shape,
         )
-        valor_resaltado = valores_graficados[iteracion, columna]
-        x_min, y_min = posiciones[iteracion, indices[columna]]
+        highlighted_value = plotted_values[iteration, column_name]
+        x_min, y_min = positions[iteration, indices[column_name]]
         axis.scatter(
-            iteracion,
-            valor_resaltado,
+            iteration,
+            highlighted_value,
             marker="*",
             s=320,
             color="gold",
             edgecolor="black",
             label=(
-                f"Más cercano al mínimo: f = {valor_resaltado:.4g} en t = {iteracion}\n"
+                f"Más cercano al mínimo: f = {highlighted_value:.4g} en t = {iteration}\n"
                 f"(x, y) = ({x_min:.4f}, {y_min:.4f})"
             ),
             zorder=5,
         )
 
-    axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
+    axis.set_title(_title_with_hyperparameters(title, hyperparameters))
     axis.set_xlabel("Iteración")
     axis.set_ylabel(r"$f(x, y)$")
     axis.grid(alpha=0.3)
-    _leyenda_exterior(figure, axis)
-    _mostrar_figura(figure)
+    _outside_legend(figure, axis)
+    _show_figure(figure)
     return figure, axis
 
 
-def plot_historial_pso_en_grupos(
+def plot_pso_history_groups(
     func,
-    enjambre_hist,
+    swarm_history,
     title,
     minima,
-    tolerancia=1e-3,
-    hiperparametros=None,
+    tolerance=1e-3,
+    hyperparameters=None,
 ):
     """!
     @brief Grafica el enjambre de PSO en grupos consecutivos de hasta diez partículas.
     @param func Función que recibe un tensor con las coordenadas x e y.
-    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param swarm_history Posiciones de todas las partículas, con forma (T+1, n, 2).
     @param title Título común de las gráficas.
     @param minima Uno o varios mínimos globales calculados para la función.
-    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
-    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
+    @param tolerance Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hyperparameters Diccionario opcional con los hiperparámetros del subtítulo.
     @return Lista de pares (figura, ejes), uno por cada grupo de partículas.
     """
-    enjambre = torch.as_tensor(enjambre_hist)
-    if enjambre.ndim != 3 or enjambre.shape[2] != 2 or enjambre.shape[1] == 0:
+    swarm = torch.as_tensor(swarm_history)
+    if swarm.ndim != 3 or swarm.shape[2] != 2 or swarm.shape[1] == 0:
         raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2) con n > 0.")
 
-    graficas = []
-    for inicio in range(0, enjambre.shape[1], 10):
-        fin = min(inicio + 10, enjambre.shape[1])
-        graficas.append(
-            plot_historial_pso(
+    plots = []
+    for start in range(0, swarm.shape[1], 10):
+        end = min(start + 10, swarm.shape[1])
+        plots.append(
+            plot_pso_history(
                 func,
-                enjambre,
-                title=f"{title} (partículas {inicio + 1}–{fin})",
+                swarm,
+                title=f"{title} (partículas {start + 1}–{end})",
                 minima=minima,
-                tolerancia=tolerancia,
-                hiperparametros=hiperparametros,
-                particulas=range(inicio, fin),
+                tolerance=tolerance,
+                hyperparameters=hyperparameters,
+                particles=range(start, end),
             )
         )
-    return graficas
+    return plots
 
 
-def mejor_particula_pso(func, enjambre_hist):
+def best_pso_particle(func, swarm_history):
     """!
     @brief Encuentra la partícula que llegó al valor más cercano al mínimo global.
     @param func Función que recibe un tensor con las coordenadas x e y.
-    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param swarm_history Posiciones de todas las partículas, con forma (T+1, n, 2).
     @return Tupla con el índice de la partícula, la iteración y el menor valor alcanzado.
     """
-    enjambre = torch.as_tensor(enjambre_hist).detach().cpu()
-    if enjambre.ndim != 3 or enjambre.shape[2] != 2:
+    swarm = torch.as_tensor(swarm_history).detach().cpu()
+    if swarm.ndim != 3 or swarm.shape[2] != 2:
         raise ValueError("El historial del enjambre debe tener forma (T+1, n, 2).")
 
     with torch.no_grad():
-        valores = func(enjambre.permute(2, 0, 1))
-    if not torch.isfinite(valores).all():
+        numeric_values = func(swarm.permute(2, 0, 1))
+    if not torch.isfinite(numeric_values).all():
         raise ValueError("El historial contiene NaN o infinito; PSO pudo divergir.")
 
     # Como f nunca es menor que su mínimo global, el menor valor es el más cercano a él.
-    iteracion, indice_particula = divmod(int(torch.argmin(valores)), valores.shape[1])
-    return indice_particula, iteracion, float(valores[iteracion, indice_particula])
+    iteration, particle_index = divmod(int(torch.argmin(numeric_values)), numeric_values.shape[1])
+    return particle_index, iteration, float(numeric_values[iteration, particle_index])
 
 
-def plot_mejor_particula_pso(
+def plot_best_pso_particle(
     func,
-    enjambre_hist,
+    swarm_history,
     title,
     minima,
-    tolerancia=1e-3,
-    hiperparametros=None,
+    tolerance=1e-3,
+    hyperparameters=None,
 ):
     """!
     @brief Grafica la evolución de f en la partícula que llegó más cerca del mínimo global.
     @param func Función que recibe un tensor con las coordenadas x e y.
-    @param enjambre_hist Posiciones de todas las partículas, con forma (T+1, n, 2).
+    @param swarm_history Posiciones de todas las partículas, con forma (T+1, n, 2).
     @param title Título de la gráfica.
     @param minima Uno o varios mínimos globales calculados para la función.
-    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
-    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
+    @param tolerance Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hyperparameters Diccionario opcional con los hiperparámetros del subtítulo.
     @return La figura y sus ejes para permitir ajustes posteriores.
     """
-    indice_particula, _, _ = mejor_particula_pso(func, enjambre_hist)
-    return plot_historial_pso(
+    particle_index, _, _ = best_pso_particle(func, swarm_history)
+    return plot_pso_history(
         func,
-        enjambre_hist,
-        title=f"{title} (partícula {indice_particula + 1})",
+        swarm_history,
+        title=f"{title} (partícula {particle_index + 1})",
         minima=minima,
-        tolerancia=tolerancia,
-        hiperparametros=hiperparametros,
-        particulas=[indice_particula],
-        resaltar_minimo=True,
+        tolerance=tolerance,
+        hyperparameters=hyperparameters,
+        particles=[particle_index],
+        highlight_minimum=True,
     )
 
 
-def plot_curvas_aprendizaje(
-    historiales_valores,
-    etiquetas,
+def plot_learning_curves(
+    value_histories,
+    curve_labels,
     title,
-    valor_minimo,
-    tolerancia=1e-3,
-    hiperparametros=None,
+    minimum_value,
+    tolerance=1e-3,
+    hyperparameters=None,
 ):
     """!
     @brief Grafica varias curvas de aprendizaje y su promedio en escala lineal.
-    @param historiales_valores Historiales f(x_t) de igual longitud, uno por corrida.
-    @param etiquetas Texto de la leyenda para cada historial.
+    @param value_histories Historiales f(x_t) de igual longitud, uno por corrida.
+    @param curve_labels Texto de la leyenda para cada historial.
     @param title Título de la gráfica.
-    @param valor_minimo Valor mínimo global conocido de la función.
-    @param tolerancia Brecha máxima respecto al mínimo para considerar convergencia.
-    @param hiperparametros Diccionario opcional con los hiperparámetros del subtítulo.
+    @param minimum_value Valor mínimo global conocido de la función.
+    @param tolerance Brecha máxima respecto al mínimo para considerar convergencia.
+    @param hyperparameters Diccionario opcional con los hiperparámetros del subtítulo.
     @return La figura y sus ejes para permitir ajustes posteriores.
     """
-    curvas = torch.stack(
-        [torch.as_tensor(historial).detach().cpu().flatten() for historial in historiales_valores]
+    curves = torch.stack(
+        [torch.as_tensor(history).detach().cpu().flatten() for history in value_histories]
     )
-    if curvas.shape[0] != len(etiquetas):
+    if curves.shape[0] != len(curve_labels):
         raise ValueError("Se necesita una etiqueta por cada curva de aprendizaje.")
-    if not torch.isfinite(curvas).all():
+    if not torch.isfinite(curves).all():
         raise ValueError("Los historiales contienen NaN o infinito.")
 
-    curvas = curvas.numpy()
-    iteraciones = np.arange(curvas.shape[1])
-    valor_convergencia = valor_minimo + tolerancia
+    curves = curves.numpy()
+    iterations = np.arange(curves.shape[1])
+    convergence_value = minimum_value + tolerance
 
     figure, axis = plt.subplots(figsize=(13, 6), layout="constrained")
     axis.axhline(
-        valor_convergencia,
+        convergence_value,
         color="darkred",
         linestyle=":",
         linewidth=1.5,
-        label=f"Convergencia = {valor_convergencia:g}",
+        label=f"Convergencia = {convergence_value:g}",
         zorder=4,
     )
-    intervalo_marcadores = max(1, len(iteraciones) // 12)
-    for indice, (curva, etiqueta) in enumerate(zip(curvas, etiquetas)):
+    marker_interval = max(1, len(iterations) // 12)
+    for index, (curve, curve_label) in enumerate(zip(curves, curve_labels)):
         axis.plot(
-            iteraciones,
-            curva,
-            color=f"C{indice % 10}",
+            iterations,
+            curve,
+            color=f"C{index % 10}",
             linestyle="--",
             marker="o",
-            markevery=intervalo_marcadores,
+            markevery=marker_interval,
             markersize=3,
             linewidth=1.2,
             alpha=0.75,
-            label=etiqueta,
+            label=curve_label,
         )
     axis.plot(
-        iteraciones,
-        curvas.mean(axis=0),
+        iterations,
+        curves.mean(axis=0),
         color="black",
         linewidth=2.5,
         label="Promedio",
     )
 
-    axis.set_title(_titulo_con_hiperparametros(title, hiperparametros))
+    axis.set_title(_title_with_hyperparameters(title, hyperparameters))
     axis.set_xlabel("Iteración")
     axis.set_ylabel(r"$f(x_t)$")
     axis.grid(alpha=0.3)
     figure.legend(loc="outside right upper")
-    _mostrar_figura(figure)
+    _show_figure(figure)
     return figure, axis
 
 
-def mostrar_tabla(tabla, titulo, formatos=None, na_rep="—"):
+def display_table(table, title_text, formats=None, na_rep="—"):
     """!
     @brief Muestra un DataFrame con un título visible y formato consistente.
-    @param tabla DataFrame de pandas que se desea mostrar.
-    @param titulo Título que aparecerá como encabezado de la tabla.
-    @param formatos Mapeo opcional de columnas a formatos de pandas Styler.
+    @param table DataFrame de pandas que se desea mostrar.
+    @param title_text Título que aparecerá como encabezado de la tabla.
+    @param formats Mapeo opcional de columnas a formatos de pandas Styler.
     @param na_rep Texto usado para representar valores ausentes.
     @return None.
     """
-    if not isinstance(tabla, pd.DataFrame):
+    if not isinstance(table, pd.DataFrame):
         raise TypeError("La tabla debe ser un DataFrame de pandas.")
 
-    estilo = tabla.style.set_caption(titulo).set_table_styles(
+    table_id = hashlib.sha256(title_text.encode("utf-8")).hexdigest()[:12]
+    style = table.style.set_uuid(table_id).set_caption(title_text).set_table_styles(
         [
             {
                 "selector": "caption",
@@ -832,8 +833,8 @@ def mostrar_tabla(tabla, titulo, formatos=None, na_rep="—"):
         ],
         overwrite=False,
     )
-    estilo = estilo.format(formatos, na_rep=na_rep)
-    display(estilo)
+    style = style.format(formats, na_rep=na_rep)
+    display(style)
 
 
 def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
@@ -903,10 +904,10 @@ def plot_function_2d_3d(x_grid, y_grid, values, title, z_label):
         pad=0.10,
     )
     surface_colorbar.set_label(z_label)
-    _mostrar_figura(figure)
+    _show_figure(figure)
 
 
-def coordenadas_minimo_malla(x_grid, y_grid, values):
+def grid_minimum_coordinates(x_grid, y_grid, values):
     """!
     @brief Obtiene las coordenadas del menor valor guardado en una malla.
     @param x_grid Malla con las coordenadas x.
@@ -920,92 +921,92 @@ def coordenadas_minimo_malla(x_grid, y_grid, values):
     return torch.stack((x_grid[row, column], y_grid[row, column]))
 
 
-def gradiente_y_hessiana(funcion, punto):
+def gradient_and_hessian(function, point):
     """!
     @brief Calcula valor, gradiente y Hessiana de una función en un punto.
-    @param funcion Función de dos variables implementada con PyTorch.
-    @param punto Tensor de dos componentes con requires_grad=True.
+    @param function Función de dos variables implementada con PyTorch.
+    @param point Tensor de dos componentes con requires_grad=True.
     @return Tupla con valor, gradiente y matriz Hessiana.
     """
-    valor = funcion(punto)
-    gradiente = torch.autograd.grad(valor, punto, create_graph=True)[0]
-    filas_hessiana = [
-        torch.autograd.grad(componente, punto, retain_graph=True)[0] for componente in gradiente
+    scalar_value = function(point)
+    gradient = torch.autograd.grad(scalar_value, point, create_graph=True)[0]
+    hessian_rows = [
+        torch.autograd.grad(component, point, retain_graph=True)[0] for component in gradient
     ]
-    return valor, gradiente, torch.stack(filas_hessiana)
+    return scalar_value, gradient, torch.stack(hessian_rows)
 
 
-def encontrar_punto_estacionario(
-    funcion,
-    inicio,
-    max_iteraciones=20,
-    tolerancia=1e-8,
+def find_stationary_point(
+    function,
+    start,
+    max_iterations=20,
+    tolerance=1e-8,
 ):
     """!
     @brief Refina un punto inicial hasta que su gradiente sea cercano a cero.
-    @param funcion Función de dos variables implementada con PyTorch.
-    @param inicio Tupla con las coordenadas iniciales.
-    @param max_iteraciones Máximo de pasos de Newton.
-    @param tolerancia Norma máxima del gradiente para detener el método.
+    @param function Función de dos variables implementada con PyTorch.
+    @param start Tupla con las coordenadas iniciales.
+    @param max_iterations Máximo de pasos de Newton.
+    @param tolerance Norma máxima del gradiente para detener el método.
     @return Tensor con el punto estacionario aproximado.
     """
-    punto = torch.tensor(inicio, dtype=torch.float64, requires_grad=True)
+    point = torch.tensor(start, dtype=torch.float64, requires_grad=True)
 
-    for _ in range(max_iteraciones):
-        _, gradiente, hessiana = gradiente_y_hessiana(funcion, punto)
-        if torch.linalg.vector_norm(gradiente) < tolerancia:
+    for _ in range(max_iterations):
+        _, gradient, hessian = gradient_and_hessian(function, point)
+        if torch.linalg.vector_norm(gradient) < tolerance:
             break
 
-        paso = torch.linalg.solve(hessiana, gradiente)
+        step = torch.linalg.solve(hessian, gradient)
         with torch.no_grad():
-            punto -= paso
+            point -= step
 
-    return punto.detach()
+    return point.detach()
 
 
-def clasificar_punto(funcion, punto, tolerancia=1e-6):
+def classify_point(function, point, tolerance=1e-6):
     """!
     @brief Clasifica un punto mediante el gradiente y la Hessiana 2x2.
-    @param funcion Función de dos variables implementada con PyTorch.
-    @param punto Tensor con las coordenadas del candidato.
-    @param tolerancia Tolerancia usada en las comparaciones numéricas.
+    @param function Función de dos variables implementada con PyTorch.
+    @param point Tensor con las coordenadas del candidato.
+    @param tolerance Tolerancia usada en las comparaciones numéricas.
     @return Diccionario con coordenadas, valor y comprobaciones.
     """
-    punto_autograd = punto.clone().detach().requires_grad_(True)
-    valor, gradiente, hessiana = gradiente_y_hessiana(funcion, punto_autograd)
-    norma_gradiente = torch.linalg.vector_norm(gradiente).item()
-    determinante = torch.det(hessiana).item()
-    f_xx = hessiana[0, 0].item()
+    autodiff_point = point.clone().detach().requires_grad_(True)
+    scalar_value, gradient, hessian = gradient_and_hessian(function, autodiff_point)
+    gradient_norm = torch.linalg.vector_norm(gradient).item()
+    determinant = torch.det(hessian).item()
+    f_xx = hessian[0, 0].item()
 
-    if norma_gradiente > tolerancia:
-        tipo = "no convergió"
-    elif determinante < -tolerancia:
-        tipo = "punto silla"
-    elif determinante > tolerancia and f_xx > 0:
-        tipo = "mínimo local"
-    elif determinante > tolerancia and f_xx < 0:
-        tipo = "máximo local"
+    if gradient_norm > tolerance:
+        kind = "no convergió"
+    elif determinant < -tolerance:
+        kind = "punto silla"
+    elif determinant > tolerance and f_xx > 0:
+        kind = "mínimo local"
+    elif determinant > tolerance and f_xx < 0:
+        kind = "máximo local"
     else:
-        tipo = "prueba inconclusa"
+        kind = "prueba inconclusa"
 
     return {
-        "punto": punto.detach(),
-        "tipo": tipo,
-        "x": punto[0].item(),
-        "y": punto[1].item(),
-        "valor": valor.item(),
-        "norma_gradiente": norma_gradiente,
-        "det_hessiana": determinante,
+        "point": point.detach(),
+        "tipo": kind,
+        "x": point[0].item(),
+        "y": point[1].item(),
+        "valor": scalar_value.item(),
+        "norma_gradiente": gradient_norm,
+        "det_hessiana": determinant,
     }
 
 
-def resultados_a_tabla(resultados):
+def results_to_table(results):
     """!
     @brief Convierte resultados de puntos críticos en una tabla compacta.
-    @param resultados Lista de diccionarios creados por clasificar_punto.
+    @param results Lista de diccionarios creados por classify_point.
     @return DataFrame con los valores necesarios para verificar cada punto.
     """
-    columnas = [
+    columns = [
         "tipo",
         "x",
         "y",
@@ -1013,10 +1014,10 @@ def resultados_a_tabla(resultados):
         "norma_gradiente",
         "det_hessiana",
     ]
-    filas = [{columna: resultado[columna] for columna in columnas} for resultado in resultados]
-    tabla = pd.DataFrame(filas)
-    tabla["norma_gradiente"] = tabla["norma_gradiente"].map(lambda value: f"{value:.2e}")
-    return tabla.round(
+    rows = [{column_name: result[column_name] for column_name in columns} for result in results]
+    table = pd.DataFrame(rows)
+    table["norma_gradiente"] = table["norma_gradiente"].map(lambda value: f"{value:.2e}")
+    return table.round(
         {
             "x": 6,
             "y": 6,
@@ -1026,325 +1027,325 @@ def resultados_a_tabla(resultados):
     )
 
 
-def encontrar_minimos_ackley_en_dominio(
-    funcion,
-    limite_inferior,
-    limite_superior,
+def find_ackley_minima_in_domain(
+    function,
+    lower_bound,
+    upper_bound,
 ):
     """!
     @brief Busca mínimos locales de Ackley desde una cuadrícula de enteros.
-    @param funcion Implementación de la función de Ackley.
-    @param limite_inferior Extremo inferior del dominio en ambos ejes.
-    @param limite_superior Extremo superior del dominio en ambos ejes.
+    @param function Implementación de la función de Ackley.
+    @param lower_bound Extremo inferior del dominio en ambos ejes.
+    @param upper_bound Extremo superior del dominio en ambos ejes.
     @return Lista sin duplicados de mínimos locales dentro del dominio.
     """
-    minimos = []
-    for x0 in range(math.ceil(limite_inferior), math.floor(limite_superior) + 1):
-        for y0 in range(math.ceil(limite_inferior), math.floor(limite_superior) + 1):
+    minimum_points = []
+    for x0 in range(math.ceil(lower_bound), math.floor(upper_bound) + 1):
+        for y0 in range(math.ceil(lower_bound), math.floor(upper_bound) + 1):
             if x0 == 0 and y0 == 0:
                 continue
 
-            punto = encontrar_punto_estacionario(
-                funcion,
-                inicio=(float(x0), float(y0)),
+            point = find_stationary_point(
+                function,
+                start=(float(x0), float(y0)),
             )
-            resultado = clasificar_punto(funcion, punto)
-            dentro_del_dominio = torch.all(
-                (punto >= limite_inferior) & (punto <= limite_superior)
+            result = classify_point(function, point)
+            inside_domain = torch.all(
+                (point >= lower_bound) & (point <= upper_bound)
             ).item()
-            repetido = any(
-                torch.linalg.vector_norm(punto - anterior).item() < 1e-5 for anterior in minimos
+            duplicate = any(
+                torch.linalg.vector_norm(point - previous).item() < 1e-5 for previous in minimum_points
             )
 
-            if resultado["tipo"] == "mínimo local" and dentro_del_dominio and not repetido:
-                minimos.append(punto)
+            if result["tipo"] == "mínimo local" and inside_domain and not duplicate:
+                minimum_points.append(point)
 
-    return minimos
+    return minimum_points
 
 
-def valor_y_gradiente(funcion, punto):
+def value_and_gradient(function, point):
     """!
     @brief Calcula el valor de una función y su gradiente en un punto.
-    @param funcion Función objetivo implementada con PyTorch.
-    @param punto Tensor con respecto al cual se calcula el gradiente.
+    @param function Función objetivo implementada con PyTorch.
+    @param point Tensor con respecto al cual se calcula el gradiente.
     @return Tupla con el valor de la función y su gradiente.
     """
-    valor = funcion(punto)
-    gradiente = torch.autograd.grad(valor, punto)[0]
-    return valor, gradiente
+    scalar_value = function(point)
+    gradient = torch.autograd.grad(scalar_value, point)[0]
+    return scalar_value, gradient
 
 
-def generar_punto_inicial(limite_inferior, limite_superior, generador=None):
+def generate_initial_point(lower_bound, upper_bound, generator=None):
     """!
     @brief Genera un punto uniforme al azar dentro de un dominio cuadrado.
-    @param limite_inferior Extremo inferior del dominio.
-    @param limite_superior Extremo superior del dominio.
-    @param generador Generador opcional compatible con random.Random.
+    @param lower_bound Extremo inferior del dominio.
+    @param upper_bound Extremo superior del dominio.
+    @param generator Generador opcional compatible con random.Random.
     @return Tupla con dos coordenadas aleatorias.
     """
-    fuente = generador if generador is not None else random
+    source_rng = generator if generator is not None else random
     return (
-        fuente.uniform(limite_inferior, limite_superior),
-        fuente.uniform(limite_inferior, limite_superior),
+        source_rng.uniform(lower_bound, upper_bound),
+        source_rng.uniform(lower_bound, upper_bound),
     )
 
 
-def evaluar_convergencia(valores_historial, valor_minimo, tolerancia):
+def evaluate_convergence(value_history, minimum_value, tolerance):
     """!
     @brief Localiza la primera iteración que satisface la tolerancia objetivo.
-    @param valores_historial Valores de la función para cada punto visitado.
-    @param valor_minimo Valor mínimo global conocido de la función.
-    @param tolerancia Brecha máxima permitida respecto al mínimo.
+    @param value_history Valores de la función para cada punto visitado.
+    @param minimum_value Valor mínimo global conocido de la función.
+    @param tolerance Brecha máxima permitida respecto al mínimo.
     @return Diccionario con estado, iteración, índice, valor y brecha reportados.
     """
-    for indice, valor in enumerate(valores_historial):
-        valor_float = float(valor.detach().cpu())
-        if not math.isfinite(valor_float):
+    for index, scalar_value in enumerate(value_history):
+        numeric_value = float(scalar_value.detach().cpu())
+        if not math.isfinite(numeric_value):
             return {
-                "convergio": False,
-                "divergio": True,
-                "iteraciones": None,
-                "indice_reporte": indice,
-                "valor_reportado": math.nan,
-                "brecha": math.inf,
+                "converged": False,
+                "diverged": True,
+                "iterations": None,
+                "report_index": index,
+                "reported_value": math.nan,
+                "gap": math.inf,
             }
 
-        brecha = abs(valor_float - valor_minimo)
-        if brecha <= tolerancia:
+        gap = abs(numeric_value - minimum_value)
+        if gap <= tolerance:
             return {
-                "convergio": True,
-                "divergio": False,
-                "iteraciones": indice,
-                "indice_reporte": indice,
-                "valor_reportado": valor_float,
-                "brecha": brecha,
+                "converged": True,
+                "diverged": False,
+                "iterations": index,
+                "report_index": index,
+                "reported_value": numeric_value,
+                "gap": gap,
             }
 
-    valor_final = float(valores_historial[-1].detach().cpu())
+    final_value = float(value_history[-1].detach().cpu())
     return {
-        "convergio": False,
-        "divergio": not math.isfinite(valor_final),
-        "iteraciones": None,
-        "indice_reporte": len(valores_historial) - 1,
-        "valor_reportado": valor_final,
-        "brecha": abs(valor_final - valor_minimo),
+        "converged": False,
+        "diverged": not math.isfinite(final_value),
+        "iterations": None,
+        "report_index": len(value_history) - 1,
+        "reported_value": final_value,
+        "gap": abs(final_value - minimum_value),
     }
 
 
-def crear_objetivo_optuna(
-    algoritmo,
-    configuracion,
-    puntos_iniciales,
-    iteraciones,
-    tolerancia,
+def create_optuna_objective(
+    algorithm,
+    configuration,
+    initial_points,
+    iterations,
+    tolerance,
     epsilon_rmsprop,
-    ejecutar_gd,
-    ejecutar_rmsprop,
-    ejecutar_pso=None,
-    semilla_pso=0,
+    run_gd_fn,
+    run_rmsprop_fn,
+    run_pso_fn=None,
+    pso_seed=0,
 ):
     """!
     @brief Crea un objetivo Optuna basado en el promedio del valor final.
-    @param algoritmo Nombre del algoritmo: GD, RMSProp o PSO.
-    @param configuracion Función, mínimo conocido y rangos de búsqueda.
-    @param puntos_iniciales Puntos compartidos por todos los ensayos.
-    @param iteraciones Cantidad fija de actualizaciones por corrida.
-    @param tolerancia Tolerancia usada solo para métricas diagnósticas.
+    @param algorithm Nombre del algoritmo: GD, RMSProp o PSO.
+    @param configuration Función, mínimo conocido y rangos de búsqueda.
+    @param initial_points Puntos compartidos por todos los ensayos.
+    @param iterations Cantidad fija de actualizaciones por corrida.
+    @param tolerance Tolerancia usada solo para métricas diagnósticas.
     @param epsilon_rmsprop Constante de estabilidad fija de RMSProp.
-    @param ejecutar_gd Función que ejecuta descenso del gradiente.
-    @param ejecutar_rmsprop Función que ejecuta RMSProp.
-    @param ejecutar_pso Función que ejecuta el enjambre de partículas.
-    @param semilla_pso Semilla base de PSO; cada punto usa semilla_pso + su índice.
+    @param run_gd_fn Función que ejecuta descenso del gradiente.
+    @param run_rmsprop_fn Función que ejecuta RMSProp.
+    @param run_pso_fn Función que ejecuta el enjambre de partículas.
+    @param pso_seed Semilla base de PSO; cada punto usa semilla_pso + su índice.
     @return Función objetivo compatible con Optuna.
     """
-    if algoritmo == "PSO" and ejecutar_pso is None:
+    if algorithm == "PSO" and run_pso_fn is None:
         raise ValueError("Se necesita ejecutar_pso para calibrar PSO.")
 
-    funcion = configuracion["funcion"]
-    valor_minimo = configuracion["valor_minimo"]
+    function = configuration["function"]
+    minimum_value = configuration["minimum_value"]
 
-    def objetivo(trial):
+    def objective(trial):
         """!
         @brief Evalúa un ensayo con el presupuesto fijo del estudio.
         @param trial Ensayo de Optuna que contiene los hiperparámetros sugeridos.
         @return Promedio del valor final de la función en los puntos iniciales.
         """
-        if algoritmo == "GD":
+        if algorithm == "GD":
             alpha = trial.suggest_float(
                 "alpha",
-                configuracion["gd_alpha_min"],
-                configuracion["gd_alpha_max"],
+                configuration["gd_alpha_min"],
+                configuration["gd_alpha_max"],
                 log=True,
             )
             gamma = None
-        elif algoritmo == "RMSProp":
+        elif algorithm == "RMSProp":
             alpha = trial.suggest_float(
                 "alpha",
-                configuracion["rms_alpha_min"],
-                configuracion["rms_alpha_max"],
+                configuration["rms_alpha_min"],
+                configuration["rms_alpha_max"],
                 log=True,
             )
             gamma = trial.suggest_float(
                 "gamma",
-                configuracion["gamma_min"],
-                configuracion["gamma_max"],
+                configuration["gamma_min"],
+                configuration["gamma_max"],
             )
-        elif algoritmo == "PSO":
+        elif algorithm == "PSO":
             c1 = trial.suggest_float(
                 "c1",
-                configuracion["pso_c1_min"],
-                configuracion["pso_c1_max"],
+                configuration["pso_c1_min"],
+                configuration["pso_c1_max"],
             )
             c2 = trial.suggest_float(
                 "c2",
-                configuracion["pso_c2_min"],
-                configuracion["pso_c2_max"],
+                configuration["pso_c2_min"],
+                configuration["pso_c2_max"],
             )
-            n_particulas = trial.suggest_int(
-                "n_particulas",
-                configuracion["pso_particulas_min"],
-                configuracion["pso_particulas_max"],
+            n_particles = trial.suggest_int(
+                "n_particles",
+                configuration["pso_particles_min"],
+                configuration["pso_particles_max"],
             )
         else:
-            raise ValueError(f"Algoritmo no soportado: {algoritmo}")
+            raise ValueError(f"Algoritmo no soportado: {algorithm}")
 
-        resultados = []
-        valores_finales = []
+        results = []
+        final_values = []
 
-        for indice_punto, punto_inicial in enumerate(puntos_iniciales):
+        for point_index, initial_point in enumerate(initial_points):
             try:
-                if algoritmo == "GD":
-                    _, valores_historial = ejecutar_gd(
+                if algorithm == "GD":
+                    _, value_history = run_gd_fn(
                         alpha=alpha,
-                        t=iteraciones,
-                        func=funcion,
-                        punto_inicial=punto_inicial,
+                        t=iterations,
+                        func=function,
+                        initial_point=initial_point,
                     )
-                elif algoritmo == "RMSProp":
-                    _, valores_historial = ejecutar_rmsprop(
+                elif algorithm == "RMSProp":
+                    _, value_history = run_rmsprop_fn(
                         alpha=alpha,
                         gamma=gamma,
                         epsilon=epsilon_rmsprop,
-                        t=iteraciones,
-                        func=funcion,
-                        punto_inicial=punto_inicial,
+                        t=iterations,
+                        func=function,
+                        initial_point=initial_point,
                     )
                 else:
                     # La semilla por punto hace reproducible cada ensayo: con la misma
                     # cantidad de partículas, los ensayos solo difieren en c1 y c2.
-                    torch.manual_seed(semilla_pso + indice_punto)
-                    _, valores_historial, _ = ejecutar_pso(
-                        T=iteraciones,
+                    torch.manual_seed(pso_seed + point_index)
+                    _, value_history, _ = run_pso_fn(
+                        T=iterations,
                         c1=c1,
                         c2=c2,
-                        func=funcion,
-                        punto_inicial=punto_inicial,
-                        n_particulas=n_particulas,
+                        func=function,
+                        initial_point=initial_point,
+                        n_particles=n_particles,
                     )
             except ValueError as error:
                 raise optuna.TrialPruned(str(error)) from error
 
-            valor_final = float(valores_historial[-1].detach().cpu())
-            if not math.isfinite(valor_final):
+            final_value = float(value_history[-1].detach().cpu())
+            if not math.isfinite(final_value):
                 raise optuna.TrialPruned("La corrida produjo un valor no finito.")
 
-            valores_finales.append(valor_final)
-            resultados.append(
-                evaluar_convergencia(
-                    valores_historial,
-                    valor_minimo,
-                    tolerancia,
+            final_values.append(final_value)
+            results.append(
+                evaluate_convergence(
+                    value_history,
+                    minimum_value,
+                    tolerance,
                 )
             )
 
-        convergentes = [resultado for resultado in resultados if resultado["convergio"]]
-        valores_reportados = [
-            resultado["valor_reportado"]
-            for resultado in resultados
-            if math.isfinite(resultado["valor_reportado"])
+        converged_runs = [result for result in results if result["converged"]]
+        reported_values = [
+            result["reported_value"]
+            for result in results
+            if math.isfinite(result["reported_value"])
         ]
-        promedio_final = float(np.mean(valores_finales))
+        mean_final_value = float(np.mean(final_values))
 
-        trial.set_user_attr("corridas_convergentes", len(convergentes))
-        trial.set_user_attr("corridas_divergentes", 0)
+        trial.set_user_attr("converged_runs", len(converged_runs))
+        trial.set_user_attr("diverged_runs", 0)
         trial.set_user_attr(
-            "iteraciones_promedio_convergencia",
-            (float(np.mean([r["iteraciones"] for r in convergentes])) if convergentes else None),
+            "mean_convergence_iterations",
+            (float(np.mean([r["iterations"] for r in converged_runs])) if converged_runs else None),
         )
         trial.set_user_attr(
-            "promedio_valor_reportado",
-            (float(np.mean(valores_reportados)) if valores_reportados else None),
+            "mean_reported_value",
+            (float(np.mean(reported_values)) if reported_values else None),
         )
-        trial.set_user_attr("promedio_valor_final", promedio_final)
-        return promedio_final
+        trial.set_user_attr("mean_final_value", mean_final_value)
+        return mean_final_value
 
-    return objetivo
+    return objective
 
 
-def _configurar_eje_logaritmico(axis, distribucion):
+def _configure_log_axis(axis, distribution):
     """!
     @brief Configura marcas decimales legibles para un parámetro logarítmico.
     @param axis Eje de Matplotlib que se desea configurar.
-    @param distribucion Distribución FloatDistribution usada por Optuna.
+    @param distribution Distribución FloatDistribution usada por Optuna.
     @return None.
     """
-    limite_inferior = float(distribucion.low)
-    limite_superior = float(distribucion.high)
-    localizador = LogLocator(base=10, subs=(1.0, 2.0, 5.0), numticks=12)
-    marcas = [
-        marca
-        for marca in localizador.tick_values(limite_inferior, limite_superior)
-        if limite_inferior <= marca <= limite_superior
+    lower_bound = float(distribution.low)
+    upper_bound = float(distribution.high)
+    locator = LogLocator(base=10, subs=(1.0, 2.0, 5.0), numticks=12)
+    ticks = [
+        tick
+        for tick in locator.tick_values(lower_bound, upper_bound)
+        if lower_bound <= tick <= upper_bound
     ]
-    marcas.extend((limite_inferior, limite_superior))
-    marcas = sorted(set(marcas))
+    ticks.extend((lower_bound, upper_bound))
+    ticks = sorted(set(ticks))
 
-    log_inferior = math.log10(limite_inferior)
-    log_superior = math.log10(limite_superior)
-    margen = max(0.04 * (log_superior - log_inferior), 0.02)
+    lower_log = math.log10(lower_bound)
+    upper_log = math.log10(upper_bound)
+    padding = max(0.04 * (upper_log - lower_log), 0.02)
 
     axis.set_xscale("log")
     axis.set_xlim(
-        10 ** (log_inferior - margen),
-        10 ** (log_superior + margen),
+        10 ** (lower_log - padding),
+        10 ** (upper_log + padding),
     )
-    axis.xaxis.set_major_locator(FixedLocator(marcas))
+    axis.xaxis.set_major_locator(FixedLocator(ticks))
     axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.4g}"))
     axis.xaxis.set_minor_locator(NullLocator())
     axis.tick_params(axis="x", labelrotation=30)
 
 
-def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
+def plot_optuna_study(study, function_name, algorithm, parameters):
     """!
     @brief Grafica el progreso del estudio y el efecto de sus parámetros.
-    @param estudio Estudio de Optuna ya ejecutado.
-    @param nombre_funcion Etiqueta de la función objetivo.
-    @param algoritmo Nombre del algoritmo calibrado.
-    @param parametros Lista de hiperparámetros ajustados.
+    @param study Estudio de Optuna ya ejecutado.
+    @param function_name Etiqueta de la función objetivo.
+    @param algorithm Nombre del algoritmo calibrado.
+    @param parameters Lista de hiperparámetros ajustados.
     @return None.
     """
-    ensayos = [
+    completed_trials = [
         trial
-        for trial in estudio.trials
+        for trial in study.trials
         if (
             trial.state == optuna.trial.TrialState.COMPLETE
             and trial.value is not None
             and np.isfinite(trial.value)
         )
     ]
-    if not ensayos:
+    if not completed_trials:
         raise ValueError("El estudio no contiene ensayos completos para graficar.")
 
-    valores = [trial.value for trial in ensayos]
-    magnitudes = np.abs(np.asarray(valores))
-    magnitudes_positivas = magnitudes[magnitudes > 0]
-    escala_amplia = (
-        magnitudes_positivas.size > 0
-        and magnitudes_positivas.max() / magnitudes_positivas.min() > 100
+    numeric_values = [trial.value for trial in completed_trials]
+    absolute_values = np.abs(np.asarray(numeric_values))
+    positive_absolute_values = absolute_values[absolute_values > 0]
+    wide_range = (
+        positive_absolute_values.size > 0
+        and positive_absolute_values.max() / positive_absolute_values.min() > 100
     )
-    escala_y = (
-        "log" if escala_amplia and all(valor > 0 for valor in valores)
-        else "symlog" if escala_amplia else "linear"
+    y_scale = (
+        "log" if wide_range and all(scalar_value > 0 for scalar_value in numeric_values)
+        else "symlog" if wide_range else "linear"
     )
 
     with warnings.catch_warnings():
@@ -1353,40 +1354,40 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
             category=optuna.exceptions.ExperimentalWarning,
         )
         axis = optuna.visualization.matplotlib.plot_optimization_history(
-            estudio,
+            study,
             target_name="Promedio de f al final",
         )
 
-    axis.set_title(f"Historial de optimización: {algoritmo} sobre {nombre_funcion}")
+    axis.set_title(f"Historial de optimización: {algorithm} sobre {function_name}")
     axis.figure.set_size_inches(8, 4.5)
-    if escala_y == "log":
+    if y_scale == "log":
         axis.set_yscale("log")
-    elif escala_y == "symlog":
-        axis.set_yscale("symlog", linthresh=max(float(magnitudes_positivas.min()), 1e-8))
-    _mostrar_figura(axis.figure)
+    elif y_scale == "symlog":
+        axis.set_yscale("symlog", linthresh=max(float(positive_absolute_values.min()), 1e-8))
+    _show_figure(axis.figure)
 
-    ancho = 7 if len(parametros) == 1 else 6 * len(parametros)
+    width = 7 if len(parameters) == 1 else 6 * len(parameters)
     figure, axes = plt.subplots(
         1,
-        len(parametros),
-        figsize=(ancho, 4.8),
+        len(parameters),
+        figsize=(width, 4.8),
         squeeze=False,
     )
     axes = axes[0]
-    mejor_ensayo = estudio.best_trial
+    best_trial = study.best_trial
 
-    for current_axis, parametro in zip(axes, parametros):
-        valores_parametro = [trial.params[parametro] for trial in ensayos]
+    for current_axis, parameter in zip(axes, parameters):
+        parameter_values = [trial.params[parameter] for trial in completed_trials]
         current_axis.scatter(
-            valores_parametro,
-            valores,
+            parameter_values,
+            numeric_values,
             color="tab:blue",
             alpha=0.75,
             label="Ensayos",
         )
         current_axis.scatter(
-            mejor_ensayo.params[parametro],
-            mejor_ensayo.value,
+            best_trial.params[parameter],
+            best_trial.value,
             marker="*",
             s=160,
             color="crimson",
@@ -1394,150 +1395,161 @@ def plot_estudio_optuna(estudio, nombre_funcion, algoritmo, parametros):
             label="Mejor ensayo",
             zorder=3,
         )
-        current_axis.set_xlabel(parametro)
+        current_axis.set_xlabel(
+            "Número de partículas" if parameter == "n_particles" else parameter
+        )
         current_axis.grid(alpha=0.3)
 
-        distribucion = ensayos[0].distributions[parametro]
-        if getattr(distribucion, "log", False):
-            _configurar_eje_logaritmico(current_axis, distribucion)
-        if escala_y == "log":
+        distribution = completed_trials[0].distributions[parameter]
+        if getattr(distribution, "log", False):
+            _configure_log_axis(current_axis, distribution)
+        if y_scale == "log":
             current_axis.set_yscale("log")
-        elif escala_y == "symlog":
-            current_axis.set_yscale("symlog", linthresh=max(float(magnitudes_positivas.min()), 1e-8))
+        elif y_scale == "symlog":
+            current_axis.set_yscale("symlog", linthresh=max(float(positive_absolute_values.min()), 1e-8))
 
     axes[0].set_ylabel("Promedio de f al final")
     axes[0].legend()
-    figure.suptitle(f"Efecto de hiperparámetros: {algoritmo} sobre {nombre_funcion}")
+    figure.suptitle(f"Efecto de hiperparámetros: {algorithm} sobre {function_name}")
     figure.tight_layout(rect=(0, 0, 1, 0.94))
-    _mostrar_figura(figure)
+    _show_figure(figure)
 
 
-def graficar_mejor_corrida(
-    algoritmo,
-    nombre_funcion,
-    mejores_corridas,
-    historiales_evaluacion,
-    funciones_evaluacion,
+def plot_best_run(
+    algorithm,
+    function_name,
+    best_runs,
+    evaluation_histories,
+    evaluation_functions,
     x_grid,
     y_grid,
-    enjambres_evaluacion=None,
-    tolerancia=1e-3,
+    evaluation_swarms=None,
+    tolerance=1e-3,
 ):
     """!
     @brief Grafica la trayectoria y curva de la corrida más rápida.
-    @param algoritmo Nombre del algoritmo: GD, RMSProp o PSO.
-    @param nombre_funcion Identificador de la función: f0, f1 o f2.
-    @param mejores_corridas Selecciones calculadas para cada combinación.
-    @param historiales_evaluacion Historiales de puntos y valores por corrida.
-    @param funciones_evaluacion Metadatos de las funciones objetivo.
+    @param algorithm Nombre del algoritmo: GD, RMSProp o PSO.
+    @param function_name Identificador de la función: f0, f1 o f2.
+    @param best_runs Selecciones calculadas para cada combinación.
+    @param evaluation_histories Historiales de puntos y valores por corrida.
+    @param evaluation_functions Metadatos de las funciones objetivo.
     @param x_grid Valores del eje x usados para construir la malla.
     @param y_grid Valores del eje y usados para construir la malla.
-    @param enjambres_evaluacion Posiciones de todas las partículas en cada corrida de PSO.
-    @param tolerancia Brecha usada para dibujar el valor de convergencia de PSO.
+    @param evaluation_swarms Posiciones de todas las partículas en cada corrida de PSO.
+    @param tolerance Brecha usada para dibujar el valor de convergencia de PSO.
     @return None.
     """
-    global _prefijo_figuras
-    _prefijo_figuras = "evaluacion"
+    global _figures_prefix
+    _figures_prefix = "evaluacion"
     try:
-        _graficar_mejor_corrida(
-            algoritmo,
-            nombre_funcion,
-            mejores_corridas,
-            historiales_evaluacion,
-            funciones_evaluacion,
+        _plot_best_run_details(
+            algorithm,
+            function_name,
+            best_runs,
+            evaluation_histories,
+            evaluation_functions,
             x_grid,
             y_grid,
-            enjambres_evaluacion,
-            tolerancia,
+            evaluation_swarms,
+            tolerance,
         )
     finally:
-        _prefijo_figuras = ""
+        _figures_prefix = ""
 
 
-def _graficar_mejor_corrida(
-    algoritmo,
-    nombre_funcion,
-    mejores_corridas,
-    historiales_evaluacion,
-    funciones_evaluacion,
+def _plot_best_run_details(
+    algorithm,
+    function_name,
+    best_runs,
+    evaluation_histories,
+    evaluation_functions,
     x_grid,
     y_grid,
-    enjambres_evaluacion,
-    tolerancia,
+    evaluation_swarms,
+    tolerance,
 ):
     """!
-    @brief Implementa graficar_mejor_corrida; las figuras se exportan con prefijo de evaluación.
+    @brief Implementa plot_best_run; las figuras se exportan con prefijo de evaluación.
+    @param algorithm Nombre del algoritmo: GD, RMSProp o PSO.
+    @param function_name Identificador de la función: f0, f1 o f2.
+    @param best_runs Selecciones calculadas para cada combinación.
+    @param evaluation_histories Historiales de puntos y valores por corrida.
+    @param evaluation_functions Metadatos de las funciones objetivo.
+    @param x_grid Valores del eje x usados para construir la malla.
+    @param y_grid Valores del eje y usados para construir la malla.
+    @param evaluation_swarms Posiciones de las partículas en cada corrida de PSO.
+    @param tolerance Brecha usada para dibujar la convergencia de PSO.
     @return None.
     """
-    seleccion = mejores_corridas[(algoritmo, nombre_funcion)]
-    corrida = int(seleccion["corrida"])
-    clave = (algoritmo, nombre_funcion, corrida)
-    puntos_historial, valores_historial = historiales_evaluacion[clave]
-    datos_funcion = funciones_evaluacion[nombre_funcion]
-    enjambre_historial = None if enjambres_evaluacion is None else enjambres_evaluacion.get(clave)
+    selection = best_runs[(algorithm, function_name)]
+    run_number = int(selection["corrida"])
+    key = (algorithm, function_name, run_number)
+    point_history, value_history = evaluation_histories[key]
+    function_data = evaluation_functions[function_name]
+    swarm_history_record = None if evaluation_swarms is None else evaluation_swarms.get(key)
 
-    if seleccion["estado"] == "Convergió":
-        indice_final = int(seleccion["índice de reporte"])
-        descripcion = f"convergió en {int(seleccion['iteraciones hasta converger'])} " "iteraciones"
+    if selection["estado"] == "Convergió":
+        final_index = int(selection["índice de reporte"])
+        description = f"convergió en {int(selection['iteraciones hasta converger'])} " "iteraciones"
     else:
-        indice_final = len(puntos_historial) - 1
-        descripcion = "no hubo convergencia; se muestra el menor valor final disponible"
+        final_index = len(point_history) - 1
+        description = "no hubo convergencia; se muestra el menor valor final disponible"
 
-    puntos_mostrados = puntos_historial[: indice_final + 1]
-    valores_mostrados = valores_historial[: indice_final + 1]
+    displayed_points = point_history[: final_index + 1]
+    displayed_values = value_history[: final_index + 1]
     print(
-        f"{algoritmo} sobre {nombre_funcion}, corrida {corrida}: "
-        f"{descripcion}; f={seleccion['valor reportado']:.6f}."
+        f"{algorithm} sobre {function_name}, corrida {run_number}: "
+        f"{description}; f={selection['valor reportado']:.6f}."
     )
 
-    titulo_trayectoria = f"Mejor trayectoria de {algoritmo} sobre {nombre_funcion}"
-    if enjambre_historial is not None:
+    trajectory_title = f"Mejor trayectoria de {algorithm} sobre {function_name}"
+    if swarm_history_record is not None:
         # Igual que en GD y RMSProp se grafica una sola trayectoria: la de la partícula
         # que llegó al valor más cercano al mínimo, desde su inicio hasta ese punto.
-        enjambre_mostrado = enjambre_historial[: indice_final + 1]
-        indice_particula, iteracion_mejor, valor_mejor = mejor_particula_pso(
-            datos_funcion["funcion"],
-            enjambre_mostrado,
+        displayed_swarm_history = swarm_history_record[: final_index + 1]
+        particle_index, best_iteration, best_value = best_pso_particle(
+            function_data["function"],
+            displayed_swarm_history,
         )
-        puntos_mostrados = enjambre_mostrado[: iteracion_mejor + 1, indice_particula]
-        titulo_trayectoria += f" (partícula {indice_particula + 1})"
+        displayed_points = displayed_swarm_history[: best_iteration + 1, particle_index]
+        trajectory_title += f" (partícula {particle_index + 1})"
         print(
-            f"Mejor partícula: {indice_particula + 1} de {enjambre_mostrado.shape[1]}; "
-            f"llegó a f={valor_mejor:.6f} en la iteración {iteracion_mejor}."
+            f"Mejor partícula: {particle_index + 1} de {displayed_swarm_history.shape[1]}; "
+            f"llegó a f={best_value:.6f} en la iteración {best_iteration}."
         )
 
     plot_func_hist(
         x_grid,
         y_grid,
-        datos_funcion["funcion"],
-        puntos_mostrados,
-        title=titulo_trayectoria,
-        minima=datos_funcion["minimos"],
-        local_minima=datos_funcion["minimos_locales"],
+        function_data["function"],
+        displayed_points,
+        title=trajectory_title,
+        minima=function_data["minima"],
+        local_minima=function_data["local_minima"],
     )
     plot_learning_curve(
-        valores_mostrados,
-        title=(f"Curva de aprendizaje de {algoritmo} sobre {nombre_funcion}"),
+        displayed_values,
+        title=(f"Curva de aprendizaje de {algorithm} sobre {function_name}"),
     )
-    if enjambre_historial is not None:
-        hiperparametros_pso = {
-            "c1": seleccion["c1"],
-            "c2": seleccion["c2"],
-            "n_particulas": int(seleccion["n_particulas"]),
+    if swarm_history_record is not None:
+        pso_hyperparameters = {
+            "c1": selection["c1"],
+            "c2": selection["c2"],
+            "n_particles": int(selection["n_particles"]),
         }
-        plot_historial_pso_en_grupos(
-            datos_funcion["funcion"],
-            enjambre_mostrado,
-            title=(f"Evolución de f en cada partícula de {algoritmo} sobre {nombre_funcion}"),
-            minima=datos_funcion["minimos"],
-            tolerancia=tolerancia,
-            hiperparametros=hiperparametros_pso,
+        plot_pso_history_groups(
+            function_data["function"],
+            displayed_swarm_history,
+            title=(f"Evolución de f en cada partícula de {algorithm} sobre {function_name}"),
+            minima=function_data["minima"],
+            tolerance=tolerance,
+            hyperparameters=pso_hyperparameters,
         )
-        plot_mejor_particula_pso(
-            datos_funcion["funcion"],
-            enjambre_mostrado,
-            title=(f"Partícula más cercana al mínimo de {algoritmo} sobre {nombre_funcion}"),
-            minima=datos_funcion["minimos"],
-            tolerancia=tolerancia,
-            hiperparametros=hiperparametros_pso,
+        plot_best_pso_particle(
+            function_data["function"],
+            displayed_swarm_history,
+            title=(f"Partícula más cercana al mínimo de {algorithm} sobre {function_name}"),
+            minima=function_data["minima"],
+            tolerance=tolerance,
+            hyperparameters=pso_hyperparameters,
         )

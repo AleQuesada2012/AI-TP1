@@ -1,21 +1,30 @@
 \section{RMSProp}
 
-\subsection{Formulación}
+\subsection{Fundamentos teóricos}
 
-RMSProp \cite{tieleman2012rmsprop} mantiene un promedio móvil, por
-coordenada, de los gradientes al cuadrado y lo usa para escalar el tamaño
-de paso de cada componente:
+RMSProp adapta el paso a la escala reciente de los gradientes de cada
+coordenada \cite{tieleman2012rmsprop,d2l_rmsprop}. En lugar de aplicar la
+misma magnitud de ajuste a todas las componentes, mantiene un promedio
+móvil exponencial de los gradientes al cuadrado:
 \[
-s_t = \gamma s_{t-1} + (1-\gamma)g_t^2, \qquad
-x_{t+1} = x_t - \frac{\alpha}{\sqrt{s_t+\epsilon}}\odot g_t,
+s_{t+1} = \gamma s_t + (1-\gamma)g_t\odot g_t, \qquad
+x_{t+1} = x_t - \frac{\alpha g_t}{\sqrt{s_{t+1}+\epsilon}},
 \]
-con $g_t=\nabla f(x_t)$, $s_0=0$ y operaciones elemento a elemento. La
-implementación sigue la formulación de \cite{d2l_rmsprop}. La función
-\texttt{run\_rmsprop(alpha, gamma, epsilon, t, func, punto\_inicial)}
-calcula el gradiente con Autograd igual que GD y realiza las dos
-actualizaciones como operaciones tensoriales sobre las dos coordenadas a la
-vez. Si el valor, el gradiente o $s_t$ dejan de ser finitos, lanza un
-\texttt{ValueError}. En todo el trabajo se usa $\epsilon=10^{-6}$.
+con $g_t=\nabla f(x_t)$, $0\leq\gamma<1$ y operaciones elemento a elemento.
+Un gradiente reciente grande aumenta el denominador de su coordenada y
+reduce el paso correspondiente; $\epsilon>0$ evita la división entre cero.
+El promedio móvil conserva información reciente sin acumular
+indefinidamente todos los gradientes anteriores.
+
+\subsection{Formulación de la solución}
+
+La función
+\texttt{run\_rmsprop(alpha, gamma, epsilon, t, func, initial\_point)}
+inicializa $s_0=0$, calcula el gradiente con Autograd igual que GD y realiza
+ambas actualizaciones como operaciones tensoriales sobre las dos
+coordenadas a la vez. Si el valor, el gradiente o el promedio móvil dejan
+de ser finitos, lanza un \texttt{ValueError}. En todo el trabajo se usa
+$\epsilon=10^{-6}$.
 
 \subsection{Demostración con hiperparámetros fijados manualmente}
 
@@ -112,7 +121,7 @@ ensayos, 25 iteraciones, 6 puntos de ajuste).}
 En $f_1$, Optuna eligió un paso pequeño y $\gamma$ cercano a 1: con esa
 configuración RMSProp desciende de forma estable hasta el mínimo local más
 cercano. Ninguna combinación probada alcanzó la tolerancia en Ackley, y el
-promedio obtenido ($13.04$) es peor que el de GD ($5.89$). La
+promedio obtenido ($13.04$) es peor que el de GD ($6.27$). La
 Figura~\ref{fig:rms_optuna} muestra el proceso de calibración.
 
 \begin{figure}[H]

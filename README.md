@@ -1,8 +1,8 @@
 # TP1 - Optimización
 
 Repositorio del Trabajo Práctico 1 del curso de Principios de Inteligencia
-Artificial. La implementación se mantiene completamente dentro de un único
-notebook de Jupyter.
+Artificial. Los experimentos se mantienen en un único notebook de Jupyter,
+con funciones compartidas en `notebooks/utils.py`.
 
 Este repositorio contiene la implementación completa en PyTorch del
 descenso del gradiente, RMSProp y el enjambre de partículas, su calibración
@@ -100,8 +100,9 @@ siguientes, si `jupyter` no está en el PATH, usar `py -m jupyter` (Windows) o
 
 ## Documentación interna
 
-Doxygen no consume el notebook directamente. La fuente documentable se genera
-de forma temporal y nunca se edita manualmente:
+Doxygen no consume el notebook directamente. Su fuente documentable se genera
+de forma temporal y nunca se edita manualmente; `notebooks/utils.py` también
+se incluye directamente:
 
 ```bash
 jupyter nbconvert --to python notebooks/tp1_optimizacion.ipynb --output tp1_optimizacion --output-dir build/doxygen-source
@@ -116,11 +117,11 @@ como la documentación generada se excluyen de Git.
 Con una distribución de LaTeX y `latexmk` instalados, ejecutar desde la raíz:
 
 ```bash
-latexmk -cd -pdf -interaction=nonstopmode -halt-on-error -outdir=../../build/report docs/report/main.tex
+./build_pdf.sh
 ```
 
-Los productos intermedios permanecen en `build/`. El PDF revisado se copia a
-`submission/` únicamente al preparar la entrega.
+El script descarta los archivos intermedios y deja únicamente el PDF generado
+en `submissions/tp1_optimizacion.pdf`.
 
 ## Equipo
 

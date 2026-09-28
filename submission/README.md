@@ -3,6 +3,9 @@
 Esta carpeta se reserva para las copias finales y verificadas de los archivos
 solicitados por TEC Digital. No trabajar directamente sobre esas copias.
 
-Antes de entregar, comprobar que el notebook sea autocontenido, se ejecute en
-orden desde un kernel limpio y que el PDF corresponda a la última versión de
-las fuentes LaTeX.
+## Doxygen
+
+La documentación interna de doxygen se encuentra en la carpeta con el nombre `doxygen`.
+Dentro del folder `html` existe un archivo principal: `index.html`.
+
+Este es el que se debe usar para navegar a través de la documentación interna.

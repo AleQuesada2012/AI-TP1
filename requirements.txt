@@ -1,5 +1,6 @@
-# Core notebook environment. Versions pinned from the environment used for the
-# official notebook run (Python 3.14.4).
+# Core notebook environment. Versions were pinned from the contributor's
+# original run (documented as Python 3.14.4). The report results and figures
+# were regenerated and verified on macOS with Python 3.14.7 using these pins.
 # jupyterlab, nbconvert and ipywidgets are not installed in that environment
 # (the notebook runs through PyCharm's ipykernel), so they remain unpinned.
 jupyterlab

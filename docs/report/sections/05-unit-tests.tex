@@ -3,7 +3,7 @@
 
 El enunciado exige documentar al menos dos pruebas unitarias por método.
 La sección ``Pruebas unitarias'' de
-\texttt{notebooks/tp1\_optimizacion.ipynb} implementa exactamente dos
+\texttt{tp1\_optimizacion.ipynb} implementa exactamente dos
 pruebas para cada algoritmo. Cada prueba es una función documentada con
 Doxygen que falla mediante \texttt{assert} o
 \texttt{torch.testing.assert\_close} si el resultado no coincide con el
@@ -14,14 +14,14 @@ RMSProp y dos de PSO'').
 \subsection{Descenso del gradiente}
 
 \begin{description}
-    \item[\texttt{probar\_actualizacion\_gd}] Ejecuta un paso de GD desde
+    \item[\texttt{test\_gd\_update}] Ejecuta un paso de GD desde
     $(1,-2)$ sobre $f_0$ con $\alpha=0.1$. Como $\nabla f_0(x)=2x$, el punto
     esperado es $x_1=x_0-\alpha\cdot2x_0=(0.8,-1.6)$. La prueba compara el
     punto inicial y el actualizado del historial con los esperados, y los
     valores de función con $f_0(x_0)$ y $f_0(x_1)$. Verifica que el
     gradiente de Autograd y la regla de actualización coinciden con la
     derivada analítica.
-    \item[\texttt{probar\_historiales\_gd}] Ejecuta 5 pasos desde $(4,-3)$
+    \item[\texttt{test\_gd\_histories}] Ejecuta 5 pasos desde $(4,-3)$
     sobre $f_0$ con $\alpha=0.1$. La solución analítica es
     $x_k=0.8^k\,x_0$. La prueba comprueba que los historiales tienen forma
     $(6,2)$ y $(6,)$ (punto inicial más 5 pasos) y que todos los puntos y
@@ -32,14 +32,14 @@ RMSProp y dos de PSO'').
 \subsection{RMSProp}
 
 \begin{description}
-    \item[\texttt{probar\_actualizacion\_rmsprop}] Ejecuta un único paso de
+    \item[\texttt{test\_rmsprop\_update}] Ejecuta un único paso de
     RMSProp desde $(1,-2)$ sobre $f_0$, con $\alpha=0.1$, $\gamma=0.9$ y
     $\epsilon=10^{-6}$, y compara el punto y el valor de función
     resultantes contra los calculados explícitamente con
     $s_1=(1-\gamma)g_0^2$ y $x_1=x_0-\alpha g_0/\sqrt{s_1+\epsilon}$, usando
     \texttt{torch.testing.assert\_close}. Verifica que la implementación
     vectorizada coincide con la fórmula matemática.
-    \item[\texttt{probar\_historiales\_rmsprop}] Ejecuta 25 iteraciones de
+    \item[\texttt{test\_rmsprop\_histories}] Ejecuta 25 iteraciones de
     RMSProp sobre $f_0$, $f_1$ y $f_2$ desde $(4,-3)$, $(2.5,-1.5)$ y
     $(6,6)$, con $\alpha=0.5$, $0.05$ y $0.4$ y $\gamma=0.9$, y comprueba
     para cada caso que: el historial de puntos tiene forma $(26,2)$ y el de
@@ -51,14 +51,14 @@ RMSProp y dos de PSO'').
 \subsection{Enjambre de partículas}
 
 \begin{description}
-    \item[\texttt{probar\_actualizacion\_pso}] Ejecuta 4 iteraciones con 5
+    \item[\texttt{test\_pso\_update}] Ejecuta 4 iteraciones con 5
     partículas sobre $f_0$ con $c_1=c_2=0$ (semilla 7). Sin atracción, la
     ecuación de velocidad se reduce a $v\leftarrow v$, así que cada
     partícula debe moverse en línea recta con velocidad constante:
     $x^{(k)}=x^{(0)}+k\,(x^{(1)}-x^{(0)})$. La prueba verifica esta relación
     para todas las partículas e iteraciones, y que el mejor global inicial
     sea la partícula de menor $f_0$ en $t=0$, con su valor.
-    \item[\texttt{probar\_historiales\_pso}] Ejecuta 25 iteraciones con 20
+    \item[\texttt{test\_pso\_histories}] Ejecuta 25 iteraciones con 20
     partículas, $c_1=c_2=0.5$ y semillas fijas sobre $f_0$, $f_1$ y $f_2$.
     Comprueba las formas de los historiales ($(26,2)$, $(26,)$ y
     $(26,20,2)$), que todos los valores sean finitos, que la primera
